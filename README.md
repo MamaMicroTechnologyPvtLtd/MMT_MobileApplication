@@ -93,3 +93,20 @@ npm start                     # Expo — open on device/emulator
 ```
 
 See [`backend/README.md`](backend/README.md) and [`mobile/README.md`](mobile/README.md) for details.
+
+## Costs & third-party integrations
+
+The app runs end-to-end with **no paid third-party integrations** in its default configuration.
+Two features have an **optional** paid tier that stays **off** unless you add credentials in `.env`.
+
+| Capability | Default (free) | Optional paid upgrade |
+|------------|----------------|-----------------------|
+| **WhatsApp** to suppliers | `wa.me` **deep links** — tap to send a pre-filled message per supplier. No account, no cost. | **WhatsApp Business Cloud API** (Meta) for automatic one-click bulk send. Needs a Meta Business account + approved templates and is **charged per conversation**. Enable with `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID`. |
+| **Payments** | **Mock mode** (settle in-app) for testing; or record offline/bank payments manually. Free. | **Razorpay**: no setup/monthly fee, but a **~2% per-transaction** fee when collecting money online (standard for any gateway). Enable with `RAZORPAY_KEY_ID` + `RAZORPAY_KEY_SECRET`. |
+| **Push notifications** | **Expo push** — free. | — |
+| **File / photo / video uploads** | Stored on your own server. Free. | — |
+| **Excel export, dashboard, in-app messaging** | Fully self-contained. Free. | — |
+
+Costs that exist for **any** app (not feature integrations): server + PostgreSQL hosting, and app-store
+publishing (Apple Developer $99/yr, Google Play $25 one-time) when you release to the stores. The app
+does **not** use any paid maps/geocoding service.
