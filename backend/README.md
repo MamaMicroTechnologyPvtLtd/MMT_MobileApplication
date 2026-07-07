@@ -70,7 +70,7 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `POST /api/projects`                | internal  | Create project (continues numeric series) |
 | `POST /api/orders`                  | internal  | Create order (auto-creates project if none) |
 | `GET  /api/orders`                  | internal/customer | Orders feed (with supplier/quote counts) |
-| `POST /api/orders/:id/send-suppliers` | internal | Send requirement to ≤30 suppliers (one click) |
+| `POST /api/orders/:id/send-suppliers` | internal | Send requirement to ≤30 suppliers (in-app + WhatsApp links / Cloud API) |
 | `GET  /api/orders/:id/comparison`   | internal  | **Comparison Sheet** rows |
 | `GET  /api/orders/:id/comparison.xlsx` | internal | Download the Comparison Sheet as a styled Excel workbook (`?token=`) |
 | `GET  /api/orders/:id/comparison.csv` | internal | Same, as CSV (`?token=`) |

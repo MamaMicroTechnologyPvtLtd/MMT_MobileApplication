@@ -41,7 +41,7 @@ Sheet → quote customer → delivery.** Profile top-right, history last.
 |---------------------|---------|
 | **Dashboard** (home) | Stat tiles (customers, suppliers, new enquiries, open orders, quotes to action, in-delivery), revenue/margin, orders-by-stage bars, and recent activity. |
 | **Enquiries** | Customer enquiries on top; one tap creates Project + Order and opens the requirement form. |
-| **Send Requirement** | Enter pincode → list suppliers in that locality → select **up to 30** → requirement / note / quantity / price → **SEND** to all at once. |
+| **Send Requirement** | Enter pincode → list suppliers in that locality → select **up to 30** → requirement / note / quantity / price → **SEND** (in-app), then **WhatsApp** each supplier via a pre-filled `wa.me` link (or auto-sent when the WhatsApp Cloud API is configured). |
 | **Orders → Order detail** | The **Comparison Sheet** (person, company, location, GST, phone, mail, price, qty, duration, note) with per-supplier **Shortlist / Ask Final Quotation / Ask Final PO**, and **Export Excel** (.xlsx). |
 | **Quote Customer**   | Take a supplier quote, add GST / tax / margin (live total) + temp supplier id, send to the customer. |
 | **Create Delivery**  | Delivery ID + invoice/PO/bill/e-way links + vehicle & driver + status. |

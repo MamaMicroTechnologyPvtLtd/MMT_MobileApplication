@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, TextInput,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, TextInput, Linking, ScrollView,
 } from 'react-native';
 import { api } from '../../api/client';
-import { Button, Field, Badge } from '../../components/ui';
+import { Button, Field, Badge, Card } from '../../components/ui';
 import { colors, spacing, radius } from '../../theme';
 
 const MAX = 30;
@@ -24,6 +24,7 @@ export default function SendRequirementScreen({ route, navigation }) {
     quantity: '',
     price_range: '',
   });
+  const [result, setResult] = useState(null); // send result incl. whatsapp links
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   const selectedIds = Object.keys(selected).filter((id) => selected[id]);
@@ -71,9 +72,7 @@ export default function SendRequirementScreen({ route, navigation }) {
         method: 'POST',
         body: { supplier_ids: selectedIds, ...form },
       });
-      Alert.alert('Sent', `Requirement for ${orderId} sent to ${res.suppliers_sent} supplier(s).`, [
-        { text: 'View comparison sheet', onPress: () => navigation.replace('OrderDetail', { orderId }) },
-      ]);
+      setResult(res); // show the WhatsApp options
     } catch (e) {
       Alert.alert('Could not send', e.message);
     } finally {
@@ -96,6 +95,45 @@ export default function SendRequirementScreen({ route, navigation }) {
       </TouchableOpacity>
     );
   };
+
+  // After sending, show the WhatsApp options (deep links, or cloud-send status).
+  if (result) {
+    const cloud = result.whatsapp_mode === 'cloud_api';
+    const withPhone = (result.whatsapp || []).filter((w) => w.wa_link);
+    return (
+      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={{ padding: spacing.lg }}>
+        <Text style={styles.successTitle}>✓ Requirement sent</Text>
+        <Text style={styles.successSub}>
+          {orderId} sent in-app to {result.suppliers_sent} supplier(s).
+          {cloud ? ' Also sent on WhatsApp.' : ' Send on WhatsApp below.'}
+        </Text>
+
+        <Text style={styles.h2}>WhatsApp {cloud ? '(auto-sent)' : '(tap to send each)'}</Text>
+        {withPhone.length === 0 ? (
+          <Card><Text style={styles.muted}>No supplier phone numbers available for WhatsApp.</Text></Card>
+        ) : withPhone.map((w) => (
+          <Card key={w.supplier_id}>
+            <View style={styles.waRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.waName}>{w.firm_name || w.supplier_id}</Text>
+                <Text style={styles.muted}>{w.phone || 'no phone'}</Text>
+              </View>
+              {cloud ? (
+                <Badge label={w.sent ? 'sent' : 'failed'} />
+              ) : (
+                <TouchableOpacity style={styles.waBtn} onPress={() => Linking.openURL(w.wa_link)}>
+                  <Text style={styles.waBtnText}>WhatsApp</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </Card>
+        ))}
+
+        <View style={{ height: spacing.md }} />
+        <Button title="View comparison sheet" onPress={() => navigation.replace('OrderDetail', { orderId })} />
+      </ScrollView>
+    );
+  }
 
   return (
     <FlatList
@@ -178,4 +216,11 @@ const styles = StyleSheet.create({
   sId: { fontSize: 11, color: colors.muted, fontWeight: '700' },
   two: { flexDirection: 'row', gap: spacing.md },
   half: { flex: 1 },
+  successTitle: { fontSize: 22, fontWeight: '800', color: colors.success },
+  successSub: { fontSize: 14, color: colors.muted, marginTop: 4, marginBottom: spacing.lg, lineHeight: 20 },
+  muted: { color: colors.muted, fontSize: 13 },
+  waRow: { flexDirection: 'row', alignItems: 'center' },
+  waName: { fontSize: 15, fontWeight: '700', color: colors.text },
+  waBtn: { backgroundColor: '#25D366', borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 9 },
+  waBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 });

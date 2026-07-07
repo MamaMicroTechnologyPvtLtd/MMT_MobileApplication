@@ -5,6 +5,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, authenticateFlexible, requireRole } = require('../middleware/auth');
 const { nextOrderId, nextProjectId, nextQuotationId } = require('../utils/idGenerator');
 const { pushCustomer, pushSupplier } = require('../utils/notify');
+const wa = require('../utils/whatsapp');
 
 const router = express.Router();
 
@@ -179,7 +180,41 @@ router.post(
         data: { type: 'order', order_id: req.params.id },
       }).catch(() => {});
     }
-    return res.json({ order: result.order, suppliers_sent: result.sent });
+
+    // WhatsApp: build a pre-filled message + wa.me deep link per supplier, and
+    // (if the Cloud API is configured) send server-side for true one-click.
+    const message = wa.requirementMessage({
+      orderId: req.params.id,
+      requirement: requirement || result.order.requirement,
+      quantity: quantity || result.order.quantity,
+      priceRange: price_range || result.order.price_range,
+      note: note || result.order.note,
+    });
+    const supRows = await query(
+      `SELECT supplier_id, supplier_firm_name, mobile FROM suppliers WHERE supplier_id = ANY($1)`,
+      [supplier_ids]
+    );
+    const cloud = wa.cloudConfigured();
+    const whatsapp = await Promise.all(supRows.rows.map(async (s) => {
+      const entry = {
+        supplier_id: s.supplier_id,
+        firm_name: s.supplier_firm_name,
+        phone: s.mobile,
+        wa_link: wa.buildWaLink(s.mobile, message),
+        sent: false,
+      };
+      if (cloud && s.mobile) {
+        try { await wa.sendCloud(s.mobile, message); entry.sent = true; } catch { entry.sent = false; }
+      }
+      return entry;
+    }));
+
+    return res.json({
+      order: result.order,
+      suppliers_sent: result.sent,
+      whatsapp_mode: cloud ? 'cloud_api' : 'deep_link',
+      whatsapp,
+    });
   })
 );
 
