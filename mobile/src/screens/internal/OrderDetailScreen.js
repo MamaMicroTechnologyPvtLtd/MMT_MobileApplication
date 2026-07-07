@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity, Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { api } from '../../api/client';
+import { api, API_BASE_URL, getToken } from '../../api/client';
 import { Card, Badge, Button, EmptyState } from '../../components/ui';
 import { colors, spacing, radius, statusColor } from '../../theme';
 
@@ -45,6 +45,18 @@ export default function OrderDetailScreen({ route, navigation }) {
     }
   };
 
+  const exportCsv = async () => {
+    try {
+      const token = await getToken();
+      const url = `${API_BASE_URL}/orders/${orderId}/comparison.csv?token=${encodeURIComponent(token)}`;
+      const ok = await Linking.canOpenURL(url);
+      if (ok) await Linking.openURL(url);
+      else Alert.alert('Export', 'Could not open the export link on this device.');
+    } catch (e) {
+      Alert.alert('Export failed', e.message);
+    }
+  };
+
   if (!order) {
     return <View style={styles.center}><Text style={{ color: colors.muted }}>Loading…</Text></View>;
   }
@@ -75,8 +87,17 @@ export default function OrderDetailScreen({ route, navigation }) {
         </View>
       </Card>
 
-      <Text style={styles.h2}>Comparison Sheet</Text>
-      <Text style={styles.sub}>{rows.length} supplier response(s)</Text>
+      <View style={styles.sheetHeader}>
+        <View>
+          <Text style={styles.h2}>Comparison Sheet</Text>
+          <Text style={styles.sub}>{rows.length} supplier response(s)</Text>
+        </View>
+        {rows.length > 0 ? (
+          <TouchableOpacity style={styles.exportBtn} onPress={exportCsv}>
+            <Text style={styles.exportText}>⬇ Export CSV</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       {rows.length === 0 ? (
         <EmptyState icon="📊" title="No quotations yet" subtitle="Supplier responses will appear here as a comparison sheet." />
@@ -174,6 +195,12 @@ const styles = StyleSheet.create({
   h2: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: spacing.lg },
   h3: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
   sub: { fontSize: 13, color: colors.muted, marginBottom: spacing.sm },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  exportBtn: {
+    borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill,
+    paddingHorizontal: 14, paddingVertical: 7, marginBottom: spacing.sm,
+  },
+  exportText: { color: colors.primary, fontWeight: '800', fontSize: 13 },
   sheetWrap: {
     backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
     borderRadius: radius.md, padding: spacing.sm,

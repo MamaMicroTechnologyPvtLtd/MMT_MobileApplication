@@ -1,12 +1,19 @@
 const express = require('express');
 const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate, authenticateFlexible, requireRole } = require('../middleware/auth');
 const { nextOrderId, nextProjectId, nextQuotationId } = require('../utils/idGenerator');
 
 const router = express.Router();
 
 const MAX_SUPPLIERS = 30;
+
+// Quote a value for CSV (wrap in quotes, escape embedded quotes).
+const csvCell = (v) => {
+  if (v == null) return '';
+  const s = String(v).replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+};
 
 /**
  * POST /api/orders  (Internal)
@@ -207,6 +214,47 @@ router.get(
       [req.params.id]
     );
     return res.json({ order_id: req.params.id, rows });
+  })
+);
+
+/**
+ * GET /api/orders/:id/comparison.csv  (Internal)
+ * Download the Comparison Sheet as a CSV (opens in Excel). Auth via header or
+ * ?token= so it can be opened directly / shared as a file.
+ */
+router.get(
+  '/:id/comparison.csv',
+  authenticateFlexible,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `SELECT sq.supplier_id, sq.price, sq.quantity, sq.duration, sq.duration_unit,
+              sq.note, sq.document_url, sq.stage, sq.status,
+              s.contact_person_name, s.supplier_firm_name, s.city AS location,
+              s.current_gst_info AS gst, s.mobile AS phone, s.email AS mail
+         FROM supplier_quotations sq
+         JOIN suppliers s ON s.supplier_id = sq.supplier_id
+        WHERE sq.order_id = $1
+        ORDER BY sq.price NULLS LAST, sq.created_at`,
+      [req.params.id]
+    );
+
+    const headers = ['Supplier Person', 'Supplier Company', 'Location', 'GST', 'Phone',
+      'Price', 'Quantity', 'Duration', 'Remark/Note', 'Mail ID', 'Documentation',
+      'Stage', 'Status', 'Supplier ID'];
+    const lines = [headers.join(',')];
+    for (const r of rows) {
+      lines.push([
+        r.contact_person_name, r.supplier_firm_name, r.location, r.gst, r.phone,
+        r.price, r.quantity, [r.duration, r.duration_unit].filter(Boolean).join(' '),
+        r.note, r.mail, r.document_url, r.stage, r.status, r.supplier_id,
+      ].map(csvCell).join(','));
+    }
+    const csv = `﻿${lines.join('\r\n')}`; // BOM so Excel reads UTF-8
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="ComparisonSheet_${req.params.id}.csv"`);
+    return res.send(csv);
   })
 );
 

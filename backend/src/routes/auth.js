@@ -17,7 +17,7 @@ const router = express.Router();
 router.post(
   '/register',
   asyncHandler(async (req, res) => {
-    const { email, password, full_name, phone, role = 'customer' } = req.body;
+    const { email, password, full_name, phone, role = 'customer', supplier_id } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'email and password are required' });
     }
@@ -28,6 +28,19 @@ router.post(
     const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    // A supplier claiming an existing MMT-issued supplier id must reference a
+    // real, not-yet-claimed supplier record.
+    if (role === 'supplier' && supplier_id) {
+      const sup = await query('SELECT supplier_id FROM suppliers WHERE supplier_id = $1', [supplier_id]);
+      if (sup.rows.length === 0) {
+        return res.status(400).json({ error: 'Unknown supplier ID. Ask the MMT team for your supplier ID.' });
+      }
+      const claimed = await query('SELECT id FROM users WHERE supplier_id = $1', [supplier_id]);
+      if (claimed.rows.length > 0) {
+        return res.status(409).json({ error: 'This supplier ID already has a login' });
+      }
     }
 
     const password_hash = await bcrypt.hash(password, 10);
@@ -46,10 +59,11 @@ router.post(
       }
 
       const { rows } = await client.query(
-        `INSERT INTO users (role, email, password_hash, full_name, phone, customer_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO users (role, email, password_hash, full_name, phone, customer_id, supplier_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, role, email, full_name, phone, customer_id, supplier_id`,
-        [role, email, password_hash, full_name || null, phone || null, customerId]
+        [role, email, password_hash, full_name || null, phone || null, customerId,
+         role === 'supplier' ? (supplier_id || null) : null]
       );
       return rows[0];
     });

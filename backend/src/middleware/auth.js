@@ -26,6 +26,23 @@ function authenticate(req, res, next) {
 }
 
 /**
+ * Like authenticate, but also accepts the token as a ?token= query param.
+ * Used for file downloads opened directly in a browser (which can't send an
+ * Authorization header).
+ */
+function authenticateFlexible(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : req.query.token;
+  if (!token) return res.status(401).json({ error: 'Authentication required' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    return next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+/**
  * Require the authenticated user to hold one of the given roles.
  * Usage: router.get('/x', authenticate, requireRole('internal'), handler)
  */
@@ -38,4 +55,6 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { signToken, authenticate, requireRole, JWT_SECRET, JWT_EXPIRES_IN };
+module.exports = {
+  signToken, authenticate, authenticateFlexible, requireRole, JWT_SECRET, JWT_EXPIRES_IN,
+};
