@@ -19,13 +19,15 @@ const storage = multer.diskStorage({
   },
 });
 
-// Accept PDFs and images (quotation PDFs, invoices, delivery photos).
+// Accept PDFs, images and short videos (quotation PDFs, invoices, delivery
+// truck photos/videos).
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (videos)
   fileFilter: (req, file, cb) => {
-    const ok = /pdf|jpe?g|png|webp/i.test(file.mimetype) || /\.(pdf|jpe?g|png|webp)$/i.test(file.originalname);
-    cb(ok ? null : new Error('Only PDF or image files are allowed'), ok);
+    const ok = /pdf|jpe?g|png|webp|mp4|quicktime|x-msvideo|webm/i.test(file.mimetype)
+      || /\.(pdf|jpe?g|png|webp|mp4|mov|avi|webm)$/i.test(file.originalname);
+    cb(ok ? null : new Error('Only PDF, image or video files are allowed'), ok);
   },
 });
 

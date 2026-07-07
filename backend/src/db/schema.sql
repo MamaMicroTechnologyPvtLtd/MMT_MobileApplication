@@ -245,6 +245,8 @@ CREATE TABLE IF NOT EXISTS deliveries (
   po_url          TEXT,
   bill_url        TEXT,
   eway_bill_url   TEXT,
+  truck_image_url TEXT,
+  truck_video_url TEXT,
   vehicle_number  TEXT,
   driver_name     TEXT,
   driver_number   TEXT,

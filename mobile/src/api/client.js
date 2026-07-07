@@ -8,6 +8,13 @@ export const API_BASE_URL =
 
 const TOKEN_KEY = 'mmt_token';
 
+// Absolute URL for a served upload path like "/uploads/xyz.pdf".
+export function fileUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL.replace(/\/api\/?$/, '')}${path}`;
+}
+
 export async function setToken(token) {
   if (token) await AsyncStorage.setItem(TOKEN_KEY, token);
   else await AsyncStorage.removeItem(TOKEN_KEY);

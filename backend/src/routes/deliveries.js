@@ -18,7 +18,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const {
       order_id, project_id, customer_id, supplier_id, invoice_no, invoice_url,
-      po_url, bill_url, eway_bill_url, vehicle_number, driver_name, driver_number,
+      po_url, bill_url, eway_bill_url, truck_image_url, truck_video_url,
+      vehicle_number, driver_name, driver_number,
       delivery_location, district, postal_code, status, remark,
     } = req.body;
     if (!order_id || !customer_id) {
@@ -30,12 +31,14 @@ router.post(
       const { rows } = await client.query(
         `INSERT INTO deliveries
            (delivery_id, order_id, project_id, customer_id, supplier_id, invoice_no,
-            invoice_url, po_url, bill_url, eway_bill_url, vehicle_number, driver_name,
-            driver_number, delivery_location, district, postal_code, status, remark)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+            invoice_url, po_url, bill_url, eway_bill_url, truck_image_url, truck_video_url,
+            vehicle_number, driver_name, driver_number, delivery_location, district,
+            postal_code, status, remark)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
         [deliveryId, order_id, project_id || null, customer_id, supplier_id || null,
          invoice_no || null, invoice_url || null, po_url || null, bill_url || null,
-         eway_bill_url || null, vehicle_number || null, driver_name || null,
+         eway_bill_url || null, truck_image_url || null, truck_video_url || null,
+         vehicle_number || null, driver_name || null,
          driver_number || null, delivery_location || null, district || null,
          postal_code || null, status || 'pending', remark || null]
       );

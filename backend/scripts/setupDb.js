@@ -25,6 +25,9 @@ async function main() {
   await pool.query('ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT');
   // email is optional now (customers/suppliers log in by ID, not email).
   await pool.query('ALTER TABLE users ALTER COLUMN email DROP NOT NULL');
+  // delivery media (truck photo/video).
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_image_url TEXT');
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_video_url TEXT');
   // eslint-disable-next-line no-console
   console.log('✓ schema applied');
 

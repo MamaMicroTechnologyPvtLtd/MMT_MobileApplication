@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { api } from '../../api/client';
 import { Button, Field, Card } from '../../components/ui';
+import UploadField from '../../components/UploadField';
 import { colors, spacing } from '../../theme';
 
 // Delivery is generated after advance payment: a Delivery ID + the order/PO/
-// invoice references and the vehicle + driver details, with a starting status.
+// invoice references, a truck photo/video, and the vehicle + driver details.
 export default function CreateDeliveryScreen({ route, navigation }) {
   const { orderId, customerId, projectId } = route.params || {};
   const [form, setForm] = useState({
     invoice_no: '', vehicle_number: '', driver_name: '', driver_number: '',
     delivery_location: '', postal_code: '', remark: '',
     invoice_url: '', po_url: '', bill_url: '', eway_bill_url: '',
+    truck_image_url: '', truck_video_url: '',
   });
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const [saving, setSaving] = useState(false);
@@ -52,12 +54,18 @@ export default function CreateDeliveryScreen({ route, navigation }) {
         <Field label="Remark" value={form.remark} onChangeText={set('remark')} placeholder="Any note" multiline />
       </Card>
 
-      <Text style={styles.h2}>Document links (optional)</Text>
+      <Text style={styles.h2}>Truck photo &amp; video</Text>
       <Card>
-        <Field label="Invoice URL" value={form.invoice_url} onChangeText={set('invoice_url')} placeholder="https://…" autoCapitalize="none" />
-        <Field label="PO URL" value={form.po_url} onChangeText={set('po_url')} placeholder="https://…" autoCapitalize="none" />
-        <Field label="Bill (GST/tax) URL" value={form.bill_url} onChangeText={set('bill_url')} placeholder="https://…" autoCapitalize="none" />
-        <Field label="E-way bill URL" value={form.eway_bill_url} onChangeText={set('eway_bill_url')} placeholder="https://…" autoCapitalize="none" />
+        <UploadField label="Truck photo" kind="image" icon="📷" value={form.truck_image_url} onChange={set('truck_image_url')} />
+        <UploadField label="Truck video" kind="video" icon="🎥" value={form.truck_video_url} onChange={set('truck_video_url')} />
+      </Card>
+
+      <Text style={styles.h2}>Documents</Text>
+      <Card>
+        <UploadField label="Invoice" kind="document" value={form.invoice_url} onChange={set('invoice_url')} />
+        <UploadField label="PO" kind="document" value={form.po_url} onChange={set('po_url')} />
+        <UploadField label="Bill (GST/tax)" kind="document" value={form.bill_url} onChange={set('bill_url')} />
+        <UploadField label="E-way bill" kind="document" value={form.eway_bill_url} onChange={set('eway_bill_url')} />
       </Card>
 
       <Button title="Create delivery" onPress={submit} loading={saving} />

@@ -2,8 +2,9 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, RefreshControl,
 } from 'react-native';
+import { Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { api } from '../api/client';
+import { api, fileUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Card, Badge, EmptyState } from '../components/ui';
 import { colors, spacing, radius } from '../theme';
@@ -97,6 +98,13 @@ export default function HistoryScreen() {
             <Text style={styles.body}>
               {[item.vehicle_number, item.driver_name, item.driver_number].filter(Boolean).join(' • ')}
             </Text>
+            {(item.truck_image_url || item.truck_video_url || item.invoice_url) ? (
+              <View style={styles.links}>
+                {item.truck_image_url ? <Link label="📷 Truck photo" url={item.truck_image_url} /> : null}
+                {item.truck_video_url ? <Link label="🎥 Truck video" url={item.truck_video_url} /> : null}
+                {item.invoice_url ? <Link label="🧾 Invoice" url={item.invoice_url} /> : null}
+              </View>
+            ) : null}
             <Text style={styles.meta}>Order {item.order_id} · {fmt(item.created_at)}</Text>
           </Card>
         );
@@ -166,6 +174,12 @@ function Head({ id, status }) {
   );
 }
 
+function Link({ label, url }) {
+  return (
+    <Text style={styles.link} onPress={() => Linking.openURL(fileUrl(url))}>{label}</Text>
+  );
+}
+
 const styles = StyleSheet.create({
   tabs: { maxHeight: 56, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.card },
   tab: {
@@ -183,4 +197,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.muted, marginTop: 6 },
   notifTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   notifDot: { color: colors.primary, fontSize: 12 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: 6 },
+  link: { color: colors.primary, fontWeight: '700', fontSize: 13 },
 });
+
