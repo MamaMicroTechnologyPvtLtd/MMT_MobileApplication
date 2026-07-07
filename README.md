@@ -8,6 +8,12 @@ Order ID series** from the old database.
 - **Backend:** Node.js (Express) + PostgreSQL REST API.
 - **Messaging:** In-app (push/notification). WhatsApp bulk-send is planned for a later phase.
 
+**Status:** all three interfaces are built and interlinked end-to-end — Customer (send enquiry →
+receive quotation → confirm → history), Internal / MAM Home (enquiries → project/order → send to
+≤30 suppliers → Comparison Sheet → quote customer → delivery), and Supplier (receive requirement →
+reply with quotation PDF/duration/note → Final PO). On login each user is routed to their role's
+interface.
+
 ```
 MMT_MobileApplication/
 ├── backend/          Node.js + Express + PostgreSQL API (shared by all 3 interfaces)

@@ -47,3 +47,26 @@ export async function api(path, { method = 'GET', body, auth = true } = {}) {
   }
   return data;
 }
+
+/**
+ * Upload a local file (e.g. a picked quotation PDF) as multipart/form-data.
+ * `file` is { uri, name, mimeType } from expo-document-picker / image-picker.
+ * Returns { url, filename, size, mimetype }.
+ */
+export async function uploadFile(file) {
+  const token = await getToken();
+  const form = new FormData();
+  form.append('file', {
+    uri: file.uri,
+    name: file.name || 'upload',
+    type: file.mimeType || 'application/octet-stream',
+  });
+  const res = await fetch(`${API_BASE_URL}/uploads`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+  return data;
+}

@@ -34,7 +34,8 @@ import CustomerFormScreen from './src/screens/internal/CustomerFormScreen';
 import SupplierFormScreen from './src/screens/internal/SupplierFormScreen';
 
 // Supplier
-import SupplierPlaceholderScreen from './src/screens/supplier/SupplierPlaceholderScreen';
+import SupplierRequirementsScreen from './src/screens/supplier/SupplierRequirementsScreen';
+import SupplierReplyScreen from './src/screens/supplier/SupplierReplyScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -108,10 +109,22 @@ function InternalStack() {
   );
 }
 
+// --- Supplier: requirements inbox + reply, alerts, profile top-right ---------
+function SupplierTabs({ navigation }) {
+  return (
+    <Tab.Navigator screenOptions={baseTabScreenOptions(navigation)}>
+      <Tab.Screen name="Requirements" component={SupplierRequirementsScreen} options={{ title: 'Requirements', tabBarIcon: tabIcon('📥') }} />
+      <Tab.Screen name="Alerts" component={HistoryScreen} options={{ title: 'Alerts', tabBarIcon: tabIcon('🔔') }} />
+    </Tab.Navigator>
+  );
+}
+
 function SupplierStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Home" component={SupplierPlaceholderScreen} options={{ title: 'Supplier' }} />
+      <Stack.Screen name="Home" component={SupplierTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="SupplierReply" component={SupplierReplyScreen} options={{ title: 'Reply' }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
     </Stack.Navigator>
   );
 }

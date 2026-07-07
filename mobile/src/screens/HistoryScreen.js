@@ -24,21 +24,29 @@ const INTERNAL_CATEGORIES = [
   { key: 'payments', label: 'Payments', icon: '💳', path: '/payments' },
   { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
 ];
+const SUPPLIER_CATEGORIES = [
+  { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
+];
+
+const categoriesForRole = (role) => {
+  if (role === 'internal') return INTERNAL_CATEGORIES;
+  if (role === 'supplier') return SUPPLIER_CATEGORIES;
+  return CUSTOMER_CATEGORIES;
+};
 
 const money = (v) => (v == null ? '—' : `₹${Number(v).toLocaleString('en-IN')}`);
 const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 export default function HistoryScreen() {
   const { user } = useAuth();
-  const CATEGORIES = user?.role === 'internal' ? INTERNAL_CATEGORIES : CUSTOMER_CATEGORIES;
-  const [active, setActive] = useState('enquiries');
+  const CATEGORIES = categoriesForRole(user?.role);
+  const [active, setActive] = useState(CATEGORIES[0].key);
   const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async (key) => {
-    const cats = user?.role === 'internal' ? INTERNAL_CATEGORIES : CUSTOMER_CATEGORIES;
-    const cat = cats.find((c) => c.key === key);
+    const cat = categoriesForRole(user?.role).find((c) => c.key === key);
     if (!cat) return;
     setLoading(true);
     try {

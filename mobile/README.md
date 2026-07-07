@@ -43,6 +43,20 @@ Sheet → quote customer → delivery.** Profile top-right, history last.
 | **Directory**        | Search customers/suppliers by name or pincode; **Add** (continues the id series) or **Edit** existing. |
 | **History**          | Category-wise: Enquiries · Orders · Deliveries · Payments · Alerts. |
 
+## Supplier interface — what's built
+
+Per the spec: **receive requirement (Order ID + details) → Reply → quotation PDF + duration
+(hrs/days/weeks) + note → submit → goes to Internal.** Below, Final Quotation / Final PO requests.
+
+| Screen             | Purpose |
+|--------------------|---------|
+| **Requirements** (home) | Requirements received from the MMT team (Order ID + requirement + note + qty + price range), each with a **Reply** button. Final Quotation / PO requests are highlighted. |
+| **Reply**          | Attach a quotation **PDF** (or image), set **duration** with a hrs/days/weeks selector, optional price/quantity, add a **note**, and submit. Reused for Final Quotation / Final PO. |
+| **Alerts**         | Notifications for the supplier. |
+| **Profile** (top-right) | Firm details of the logged-in supplier; log out. |
+
+File uploads use `expo-document-picker` → `POST /api/uploads` (served back from `/uploads`).
+
 ## Structure
 
 ```
@@ -57,7 +71,7 @@ mobile/
         ├── (customer)        Enquiry, Quotations, History, Profile
         ├── internal/         Enquiries, Orders, OrderDetail, SendRequirement,
         │                     QuoteCustomer, CreateDelivery, Directory, Customer/Supplier forms
-        └── supplier/         Placeholder (interface coming next)
+        └── supplier/         Requirements inbox, Reply (PDF + duration + note)
 ```
 
 ## Notes

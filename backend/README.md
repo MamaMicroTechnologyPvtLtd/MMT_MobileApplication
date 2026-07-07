@@ -52,7 +52,10 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `GET  /api/orders/:id/comparison`   | internal  | **Comparison Sheet** rows |
 | `POST /api/orders/:id/quote-customer` | internal | Edit supplier quote (GST/tax/margin) → send to customer |
 | `PATCH /api/supplier-quotations/:id` | internal | Shortlist / ask Final Quotation / ask Final PO |
+| `GET  /api/supplier/requirements`   | supplier  | Requirements sent to me (+ my latest quote & stage) |
+| `GET  /api/supplier/requirements/:orderId` | supplier | One requirement + my quotation history |
 | `POST /api/orders/:orderId/quotations` | supplier | Reply to a requirement (feeds the Comparison Sheet) |
+| `POST /api/uploads`                 | any       | Upload a quotation PDF / document → returns a served URL |
 | `POST /api/deliveries`              | internal  | Create delivery (Delivery ID + docs + vehicle) |
 | `PATCH /api/deliveries/:id/status`  | internal  | Update delivery status |
 | `POST /api/payments`                | internal  | Raise advance / final payment request |

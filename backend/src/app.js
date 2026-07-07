@@ -32,6 +32,8 @@ app.use('/api/quotations', require('./routes/quotations'));
 app.use('/api/deliveries', require('./routes/deliveries'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/supplier', require('./routes/supplierInbox'));
+app.use('/api/uploads', require('./routes/uploads'));
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use(errorHandler);
