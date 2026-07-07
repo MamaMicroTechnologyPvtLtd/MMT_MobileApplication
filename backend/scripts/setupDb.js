@@ -23,6 +23,8 @@ async function main() {
   await pool.query(schema);
   // Idempotent column additions for databases created before a column existed.
   await pool.query('ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT');
+  // email is optional now (customers/suppliers log in by ID, not email).
+  await pool.query('ALTER TABLE users ALTER COLUMN email DROP NOT NULL');
   // eslint-disable-next-line no-console
   console.log('✓ schema applied');
 

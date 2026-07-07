@@ -29,8 +29,10 @@ export function AuthProvider({ children }) {
     })();
   }, [loadMe]);
 
-  const login = useCallback(async (email, password) => {
-    const data = await api('/auth/login', { method: 'POST', auth: false, body: { email, password } });
+  // `identifier` is an email (internal employees) or a business ID
+  // (customer_id / supplier_id) for customers and suppliers.
+  const login = useCallback(async (identifier, password) => {
+    const data = await api('/auth/login', { method: 'POST', auth: false, body: { login: identifier, password } });
     await setToken(data.token);
     setUser(data.user);
     await loadMe();

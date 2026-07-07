@@ -7,6 +7,9 @@ Order ID series** from the old database.
 - **Mobile app:** React Native (Expo) — three role-based interfaces.
 - **Backend:** Node.js (Express) + PostgreSQL REST API.
 - **Messaging:** In-app (push/notification). WhatsApp bulk-send is planned for a later phase.
+- **Access:** only internal **employees** self-register. Customers and suppliers are onboarded by an
+  internal member, who issues each a login = their **business ID** (`C####` / `S##`) + a generated
+  password; they sign in with that ID.
 
 **Status:** all three interfaces are built and interlinked end-to-end — Customer (send enquiry →
 receive quotation → confirm → history), Internal / MAM Home (enquiries → project/order → send to

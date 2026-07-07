@@ -1,9 +1,13 @@
 # MMT Mobile (React Native / Expo)
 
 Role-based app: on login the user is routed to the interface for their role
-(**Customer**, **Internal / MAM Home**, or **Supplier**). The Customer and Internal interfaces are
-built; the Supplier interface is next. All three reuse the same API client, auth context, and
-design system.
+(**Customer**, **Internal / MAMA Home**, or **Supplier**), all sharing one API client, auth context,
+and design system.
+
+**Access model:** only internal **employees** self-register (Register screen). Customers and
+suppliers are created by an internal member in the Directory — the app then shows their issued
+**login ID + password** to hand over. Everyone logs in on one screen: employees with their email,
+customers/suppliers with their **business ID** (`C####` / `S##`).
 
 ## Run
 

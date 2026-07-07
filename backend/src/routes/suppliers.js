@@ -4,6 +4,7 @@ const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { nextSupplierId } = require('../utils/idGenerator');
+const { generatePassword } = require('../utils/password');
 
 const router = express.Router();
 
@@ -48,13 +49,16 @@ router.get(
 );
 
 /**
- * POST /api/suppliers  (Internal) — add new supplier (continues S-series).
+ * POST /api/suppliers  (Internal) — add new supplier (continues S-series) and
+ * issue a login: username IS the supplier_id, password supplied or generated.
+ * The plaintext password is returned ONCE to hand to the supplier.
  */
 router.post(
   '/',
   authenticate,
   requireRole('internal'),
   asyncHandler(async (req, res) => {
+    const password = req.body.password || generatePassword();
     const supplier = await withTransaction(async (client) => {
       const supplierId = await nextSupplierId(client);
       const cols = ['supplier_id'];
@@ -70,9 +74,21 @@ router.post(
         `INSERT INTO suppliers (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
         vals
       );
-      return rows[0];
+      const created = rows[0];
+
+      const password_hash = await bcrypt.hash(password, 10);
+      await client.query(
+        `INSERT INTO users (role, email, password_hash, full_name, phone, supplier_id)
+         VALUES ('supplier', $1, $2, $3, $4, $5)`,
+        [created.email || null, password_hash, created.supplier_firm_name || null,
+         created.mobile || null, supplierId]
+      );
+      return created;
     });
-    return res.status(201).json(supplier);
+    return res.status(201).json({
+      ...supplier,
+      credentials: { username: supplier.supplier_id, password },
+    });
   })
 );
 
@@ -93,41 +109,8 @@ router.get(
 );
 
 /**
- * POST /api/suppliers/:id/account  (Internal)
- * Create a login for a supplier so they can access the Supplier interface.
- * Onboarding is done by the internal member (matches the workflow).
- */
-router.post(
-  '/:id/account',
-  authenticate,
-  requireRole('internal'),
-  asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' });
-    }
-    const sup = await query('SELECT supplier_id, supplier_firm_name FROM suppliers WHERE supplier_id = $1', [req.params.id]);
-    if (sup.rows.length === 0) return res.status(404).json({ error: 'Supplier not found' });
-
-    const taken = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (taken.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
-
-    const linked = await query('SELECT id FROM users WHERE supplier_id = $1', [req.params.id]);
-    if (linked.rows.length > 0) return res.status(409).json({ error: 'This supplier already has a login' });
-
-    const password_hash = await bcrypt.hash(password, 10);
-    const { rows } = await query(
-      `INSERT INTO users (role, email, password_hash, full_name, supplier_id)
-       VALUES ('supplier', $1, $2, $3, $4)
-       RETURNING id, role, email, full_name, supplier_id`,
-      [email, password_hash, sup.rows[0].supplier_firm_name || null, req.params.id]
-    );
-    return res.status(201).json({ user: rows[0] });
-  })
-);
-
-/**
  * GET /api/suppliers/:id/account  (Internal) — whether a login exists.
+ * The login username is always the supplier_id.
  */
 router.get(
   '/:id/account',
@@ -135,10 +118,36 @@ router.get(
   requireRole('internal'),
   asyncHandler(async (req, res) => {
     const { rows } = await query(
-      'SELECT id, email, created_at FROM users WHERE supplier_id = $1',
+      'SELECT id, created_at FROM users WHERE supplier_id = $1',
       [req.params.id]
     );
-    return res.json({ has_login: rows.length > 0, account: rows[0] || null });
+    return res.json({ has_login: rows.length > 0, username: req.params.id, account: rows[0] || null });
+  })
+);
+
+/**
+ * POST /api/suppliers/:id/account  (Internal) — create or reset the login
+ * password for a supplier. Returns the new plaintext password once.
+ */
+router.post(
+  '/:id/account',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const sup = await query('SELECT supplier_id, supplier_firm_name, email, mobile FROM suppliers WHERE supplier_id = $1', [req.params.id]);
+    if (sup.rows.length === 0) return res.status(404).json({ error: 'Supplier not found' });
+    const s = sup.rows[0];
+    const password = req.body.password || generatePassword();
+    const password_hash = await bcrypt.hash(password, 10);
+
+    await query(
+      `INSERT INTO users (role, email, password_hash, full_name, phone, supplier_id)
+       VALUES ('supplier', $1, $2, $3, $4, $5)
+       ON CONFLICT (supplier_id) WHERE supplier_id IS NOT NULL
+       DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()`,
+      [s.email || null, password_hash, s.supplier_firm_name || null, s.mobile || null, req.params.id]
+    );
+    return res.json({ credentials: { username: req.params.id, password } });
   })
 );
 

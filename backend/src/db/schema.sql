@@ -17,10 +17,14 @@ CREATE TABLE IF NOT EXISTS id_counters (
 -- Auth users. Every login maps to exactly one role. Customer/Supplier logins
 -- are linked to their business record; Internal users are company employees.
 -- ---------------------------------------------------------------------------
+-- Internal employees log in with their email; customers/suppliers log in with
+-- their business ID (customer_id / supplier_id) — the login username IS the ID,
+-- issued by an internal member together with a password. email is therefore
+-- optional (nullable) and only used for internal accounts (and as contact info).
 CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   role          TEXT NOT NULL CHECK (role IN ('customer', 'internal', 'supplier')),
-  email         TEXT UNIQUE NOT NULL,
+  email         TEXT UNIQUE,
   password_hash TEXT NOT NULL,
   full_name     TEXT,
   phone         TEXT,
@@ -29,6 +33,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- One login per business ID; the ID doubles as the login username.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_customer_id ON users (customer_id) WHERE customer_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supplier_id ON users (supplier_id) WHERE supplier_id IS NOT NULL;
 
 -- ---------------------------------------------------------------------------
 -- Customers (mirrors legacy customer_details, with region fields promoted to

@@ -28,11 +28,17 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 
 ## API surface
 
+> **Auth model:** only internal **employees** self-register. Customers and suppliers do **not**
+> self-register — an internal member creates their record and the system issues a login whose
+> **username is the business ID** (`customer_id` / `supplier_id`) plus a generated password. They log
+> in with that ID. The plaintext password is returned to the internal member **once** to hand over.
+
 | Method & path                       | Role      | Purpose |
 |-------------------------------------|-----------|---------|
-| `POST /api/auth/register`           | public    | Register; role=customer allocates next `C####` + customer record |
-| `POST /api/auth/login`              | public    | Login, returns JWT |
+| `POST /api/auth/register`           | public    | **Internal employees only** — register with email + password |
+| `POST /api/auth/login`              | public    | Login with `{ login, password }` — `login` is an email (internal) or an ID (customer/supplier) |
 | `GET  /api/auth/me`                 | any       | Current user + linked profile |
+| `GET/POST /api/customers/:id/account` | internal | Check / create-or-reset a customer login (returns credentials once) |
 | `POST /api/enquiries`               | customer  | Send enquiry to Internal |
 | `GET  /api/enquiries`               | customer/internal | Enquiry history / Internal enquiry list |
 | `PATCH /api/enquiries/:id/status`   | internal  | Move enquiry through the workflow |
@@ -43,7 +49,7 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `POST /api/payments/:id/pay`        | customer  | Record advance/final payment |
 | `GET  /api/notifications`           | any       | Notifications (incl. offers) |
 | `POST /api/notifications/:id/read`  | any       | Mark read |
-| `GET/POST/PUT /api/customers`       | internal  | List by pincode / **Add** / **Edit** existing |
+| `GET/POST/PUT /api/customers`       | internal  | List by pincode / **Add** (issues login) / **Edit** existing |
 | `GET/POST/PUT /api/suppliers`       | internal  | List by pincode / **Add** / **Edit** existing |
 | `GET/POST /api/suppliers/:id/account` | internal | Check / create a supplier login (onboarding) |
 | `POST /api/projects`                | internal  | Create project (continues numeric series) |
