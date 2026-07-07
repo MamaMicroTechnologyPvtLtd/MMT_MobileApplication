@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone         TEXT,
   customer_id   TEXT,            -- FK -> customers.customer_id (for role = customer)
   supplier_id   TEXT,            -- FK -> suppliers.supplier_id (for role = supplier)
+  push_token    TEXT,            -- Expo push token for this device/login
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

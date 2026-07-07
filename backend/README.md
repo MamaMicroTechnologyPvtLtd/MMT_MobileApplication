@@ -62,6 +62,7 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `POST /api/payments/:id/pay`        | customer  | Record advance/final payment |
 | `GET  /api/notifications`           | any       | Notifications (incl. offers) |
 | `POST /api/notifications/:id/read`  | any       | Mark read |
+| `POST /api/notifications/register-token` | any  | Store the caller's Expo push token for device push |
 | `GET/POST/PUT /api/customers`       | internal  | List by pincode / **Add** (issues login) / **Edit** existing |
 | `GET/POST/PUT /api/suppliers`       | internal  | List by pincode / **Add** / **Edit** existing |
 | `GET/POST /api/suppliers/:id/account` | internal | Check / create a supplier login (onboarding) |

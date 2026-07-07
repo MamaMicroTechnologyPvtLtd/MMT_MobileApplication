@@ -3,6 +3,7 @@ const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { nextDeliveryId } = require('../utils/idGenerator');
+const { pushCustomer } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -55,6 +56,11 @@ router.post(
       );
       return rows[0];
     });
+    pushCustomer(customer_id, {
+      title: `Delivery ${delivery.delivery_id} created`,
+      body: vehicle_number ? `Vehicle ${vehicle_number}` : 'Your order is being prepared for delivery.',
+      data: { type: 'delivery', delivery_id: delivery.delivery_id, order_id },
+    }).catch(() => {});
     return res.status(201).json(delivery);
   })
 );
@@ -81,6 +87,11 @@ router.patch(
       [rows[0].customer_id, `Delivery ${req.params.id}: ${status.replace('_', ' ')}`,
        null, JSON.stringify({ delivery_id: req.params.id })]
     );
+    pushCustomer(rows[0].customer_id, {
+      title: `Delivery ${req.params.id}`,
+      body: `Status: ${status.replace('_', ' ')}`,
+      data: { type: 'delivery', delivery_id: req.params.id },
+    }).catch(() => {});
     return res.json(rows[0]);
   })
 );

@@ -2,6 +2,7 @@ const express = require('express');
 const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { pushInternal, pushSupplier } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -53,6 +54,11 @@ router.post(
       );
       return rows[0];
     });
+    pushInternal({
+      title: `Quotation received · ${orderId}`,
+      body: `From ${supplier_id}${price != null ? ` · ₹${price}` : ''}`,
+      data: { type: 'quotation', order_id: orderId, supplier_id },
+    }).catch(() => {});
     return res.status(201).json(quote);
   })
 );
@@ -121,6 +127,13 @@ actionRouter.patch(
       }
       return row;
     });
+    if (request_stage) {
+      pushSupplier(updated.supplier_id, {
+        title: `Please send ${request_stage.replace('_', ' ')} · ${updated.order_id}`,
+        body: 'The MMT team shortlisted your quotation.',
+        data: { type: 'order', order_id: updated.order_id, stage: request_stage },
+      }).catch(() => {});
+    }
     return res.json(updated);
   })
 );

@@ -4,6 +4,7 @@ const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, authenticateFlexible, requireRole } = require('../middleware/auth');
 const { nextOrderId, nextProjectId, nextQuotationId } = require('../utils/idGenerator');
+const { pushCustomer, pushSupplier } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -170,6 +171,14 @@ router.post(
       return { order, sent };
     });
 
+    // Best-effort device push to each supplier the requirement went to.
+    for (const supplierId of supplier_ids) {
+      pushSupplier(supplierId, {
+        title: `New requirement · ${req.params.id}`,
+        body: (requirement || result.order.requirement || 'You have a new requirement').slice(0, 120),
+        data: { type: 'order', order_id: req.params.id },
+      }).catch(() => {});
+    }
     return res.json({ order: result.order, suppliers_sent: result.sent });
   })
 );
@@ -395,6 +404,11 @@ router.post(
       );
       return rows[0];
     });
+    pushCustomer(quote.customer_id, {
+      title: `Quotation ${quote.quotation_id} received`,
+      body: `Total ₹${Number(quote.total_amount || 0).toLocaleString('en-IN')}`,
+      data: { type: 'quotation', quotation_id: quote.quotation_id, order_id: req.params.id },
+    }).catch(() => {});
     return res.status(201).json(quote);
   })
 );

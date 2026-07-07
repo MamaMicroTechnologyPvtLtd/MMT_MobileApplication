@@ -2,6 +2,7 @@ const express = require('express');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { pushCustomer } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -32,6 +33,11 @@ router.post(
        `Amount ₹${Number(amount).toLocaleString('en-IN')}`,
        JSON.stringify({ payment_id: rows[0].id, order_id })]
     );
+    pushCustomer(customer_id, {
+      title: `${type || 'advance'} payment requested`,
+      body: `Amount ₹${Number(amount).toLocaleString('en-IN')}`,
+      data: { type: 'payment', payment_id: rows[0].id, order_id },
+    }).catch(() => {});
     return res.status(201).json(rows[0]);
   })
 );

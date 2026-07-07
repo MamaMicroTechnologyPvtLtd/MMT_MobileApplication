@@ -3,6 +3,7 @@ const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { nextEnquiryId } = require('../utils/idGenerator');
+const { pushInternal } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -41,6 +42,11 @@ router.post(
       return rows[0];
     });
 
+    pushInternal({
+      title: 'New enquiry received',
+      body: `${enquiry.subject || enquiry.category || 'Enquiry'}: ${enquiry.message.slice(0, 80)}`,
+      data: { type: 'order', enquiry_id: enquiry.enquiry_id },
+    }).catch(() => {});
     return res.status(201).json(enquiry);
   })
 );

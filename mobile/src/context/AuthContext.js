@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api, setToken, getToken } from '../api/client';
+import { registerForPush } from '../push';
 
 const AuthContext = createContext(null);
 
@@ -13,6 +14,8 @@ export function AuthProvider({ children }) {
       const data = await api('/auth/me');
       setUser(data.user);
       setProfile(data.profile);
+      // Register this device for push once we have an authenticated session.
+      registerForPush();
     } catch {
       // token invalid/expired
       await setToken(null);

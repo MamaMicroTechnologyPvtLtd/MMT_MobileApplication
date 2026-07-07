@@ -28,6 +28,8 @@ async function main() {
   // delivery media (truck photo/video).
   await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_image_url TEXT');
   await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_video_url TEXT');
+  // Expo push token per login.
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
   // eslint-disable-next-line no-console
   console.log('✓ schema applied');
 

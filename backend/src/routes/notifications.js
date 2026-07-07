@@ -37,6 +37,21 @@ router.get(
 );
 
 /**
+ * POST /api/notifications/register-token
+ * Store the caller's Expo push token so they receive device notifications.
+ */
+router.post(
+  '/register-token',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'token is required' });
+    await query('UPDATE users SET push_token = $1, updated_at = now() WHERE id = $2', [token, req.user.id]);
+    return res.json({ ok: true });
+  })
+);
+
+/**
  * POST /api/notifications/:id/read
  */
 router.post(
