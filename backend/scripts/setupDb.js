@@ -21,6 +21,8 @@ const LEGACY_COUNTERS = {
 async function main() {
   const schema = fs.readFileSync(path.join(__dirname, '..', 'src', 'db', 'schema.sql'), 'utf8');
   await pool.query(schema);
+  // Idempotent column additions for databases created before a column existed.
+  await pool.query('ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT');
   // eslint-disable-next-line no-console
   console.log('✓ schema applied');
 

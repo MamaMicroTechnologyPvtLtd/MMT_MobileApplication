@@ -4,31 +4,42 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Card, Badge, EmptyState } from '../components/ui';
 import { colors, spacing, radius } from '../theme';
 
-// History, shown category-wise (per the customer spec): send-enquiry history,
-// received-quotation history, delivery-status history, payments history, and
-// notifications/offers history.
-const CATEGORIES = [
+// History, shown category-wise. Customers see received-quotation history; the
+// internal team sees the orders feed in its place.
+const CUSTOMER_CATEGORIES = [
   { key: 'enquiries', label: 'Enquiries', icon: '📝', path: '/enquiries' },
   { key: 'quotations', label: 'Quotations', icon: '📄', path: '/quotations' },
   { key: 'deliveries', label: 'Deliveries', icon: '🚚', path: '/deliveries' },
   { key: 'payments', label: 'Payments', icon: '💳', path: '/payments' },
   { key: 'notifications', label: 'Offers', icon: '🔔', path: '/notifications' },
 ];
+const INTERNAL_CATEGORIES = [
+  { key: 'enquiries', label: 'Enquiries', icon: '📝', path: '/enquiries' },
+  { key: 'orders', label: 'Orders', icon: '📦', path: '/orders' },
+  { key: 'deliveries', label: 'Deliveries', icon: '🚚', path: '/deliveries' },
+  { key: 'payments', label: 'Payments', icon: '💳', path: '/payments' },
+  { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
+];
 
 const money = (v) => (v == null ? '—' : `₹${Number(v).toLocaleString('en-IN')}`);
 const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 export default function HistoryScreen() {
+  const { user } = useAuth();
+  const CATEGORIES = user?.role === 'internal' ? INTERNAL_CATEGORIES : CUSTOMER_CATEGORIES;
   const [active, setActive] = useState('enquiries');
   const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async (key) => {
-    const cat = CATEGORIES.find((c) => c.key === key);
+    const cats = user?.role === 'internal' ? INTERNAL_CATEGORIES : CUSTOMER_CATEGORIES;
+    const cat = cats.find((c) => c.key === key);
+    if (!cat) return;
     setLoading(true);
     try {
       setData(await api(cat.path));
@@ -37,7 +48,7 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useFocusEffect(useCallback(() => { load(active); }, [active, load]));
 
@@ -59,6 +70,15 @@ export default function HistoryScreen() {
             <Text style={styles.title}>Total {money(item.total_amount)}</Text>
             <Text style={styles.body}>{item.subject || item.requirement || ''}</Text>
             <Text style={styles.meta}>{fmt(item.created_at)}</Text>
+          </Card>
+        );
+      case 'orders':
+        return (
+          <Card>
+            <Head id={item.order_id} status={item.status} />
+            <Text style={styles.title}>{[item.first_name, item.last_name].filter(Boolean).join(' ') || item.customer_id}</Text>
+            <Text style={styles.body} numberOfLines={2}>{item.requirement || '—'}</Text>
+            <Text style={styles.meta}>{item.quotes_count || 0} quotes · {fmt(item.created_at)}</Text>
           </Card>
         );
       case 'deliveries':
@@ -98,7 +118,8 @@ export default function HistoryScreen() {
   };
 
   const keyFor = (item, i) =>
-    item.enquiry_id || item.quotation_id || item.delivery_id || String(item.id) || String(i);
+    item.enquiry_id || item.quotation_id || item.order_id || item.delivery_id
+    || (item.id != null ? String(item.id) : String(i));
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>

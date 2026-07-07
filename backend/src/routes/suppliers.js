@@ -7,7 +7,7 @@ const { nextSupplierId } = require('../utils/idGenerator');
 const router = express.Router();
 
 const EDITABLE = [
-  'supplier_firm_name', 'contact_person_name', 'address', 'city', 'state',
+  'supplier_firm_name', 'contact_person_name', 'email', 'address', 'city', 'state',
   'country', 'pincode', 'ward', 'zone', 'landline', 'mobile', 'alt_number',
   'fax_num', 'current_gst_info', 'pan_number', 'aadhar_number', 'account_number',
   'account_holder_name', 'ifsc', 'branch', 'bank_name', 'supplier_type', 'status',

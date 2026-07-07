@@ -1,9 +1,40 @@
 const express = require('express');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+
+/**
+ * POST /api/payments  (Internal)
+ * Raise an advance/final payment request against an order (or delivery) once the
+ * customer confirms the quotation.
+ */
+router.post(
+  '/',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const { order_id, delivery_id, customer_id, amount, type, method, reference } = req.body;
+    if (!customer_id || amount == null) {
+      return res.status(400).json({ error: 'customer_id and amount are required' });
+    }
+    const { rows } = await query(
+      `INSERT INTO payments (order_id, delivery_id, customer_id, amount, type, method, reference)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [order_id || null, delivery_id || null, customer_id, amount,
+       type || 'advance', method || null, reference || null]
+    );
+    await query(
+      `INSERT INTO notifications (customer_id, type, title, body, data)
+       VALUES ($1, 'payment', $2, $3, $4)`,
+      [customer_id, `${(type || 'advance')} payment requested`,
+       `Amount ₹${Number(amount).toLocaleString('en-IN')}`,
+       JSON.stringify({ payment_id: rows[0].id, order_id })]
+    );
+    return res.status(201).json(rows[0]);
+  })
+);
 
 /**
  * GET /api/payments  (Customer: own; Internal: all)

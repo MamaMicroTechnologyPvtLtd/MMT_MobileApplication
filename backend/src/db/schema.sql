@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   supplier_id         TEXT PRIMARY KEY,      -- e.g. MH_91_Z1_S101
   supplier_firm_name  TEXT,
   contact_person_name TEXT,
+  email               TEXT,
   address             TEXT,
   city                TEXT,
   state               TEXT,

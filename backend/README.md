@@ -45,10 +45,20 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `POST /api/notifications/:id/read`  | any       | Mark read |
 | `GET/POST/PUT /api/customers`       | internal  | List by pincode / **Add** / **Edit** existing |
 | `GET/POST/PUT /api/suppliers`       | internal  | List by pincode / **Add** / **Edit** existing |
+| `POST /api/projects`                | internal  | Create project (continues numeric series) |
+| `POST /api/orders`                  | internal  | Create order (auto-creates project if none) |
+| `GET  /api/orders`                  | internal/customer | Orders feed (with supplier/quote counts) |
+| `POST /api/orders/:id/send-suppliers` | internal | Send requirement to ≤30 suppliers (one click) |
+| `GET  /api/orders/:id/comparison`   | internal  | **Comparison Sheet** rows |
+| `POST /api/orders/:id/quote-customer` | internal | Edit supplier quote (GST/tax/margin) → send to customer |
+| `PATCH /api/supplier-quotations/:id` | internal | Shortlist / ask Final Quotation / ask Final PO |
+| `POST /api/orders/:orderId/quotations` | supplier | Reply to a requirement (feeds the Comparison Sheet) |
+| `POST /api/deliveries`              | internal  | Create delivery (Delivery ID + docs + vehicle) |
+| `PATCH /api/deliveries/:id/status`  | internal  | Update delivery status |
+| `POST /api/payments`                | internal  | Raise advance / final payment request |
 
-Routes for the Internal supplier fan-out (send requirement to ≤30 suppliers, comparison sheet) and
-the Supplier reply flow build on the same schema (`order_suppliers`, `supplier_quotations`) and are
-added with the Internal and Supplier interfaces.
+The Supplier reply flow (`POST /api/orders/:orderId/quotations`) already exists on the same schema
+(`order_suppliers`, `supplier_quotations`); the Supplier **interface** (screens) is the next phase.
 
 ## Data model
 
