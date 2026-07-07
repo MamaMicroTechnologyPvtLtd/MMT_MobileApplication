@@ -28,14 +28,16 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 
 ## API surface
 
-> **Auth model:** only internal **employees** self-register. Customers and suppliers do **not**
-> self-register — an internal member creates their record and the system issues a login whose
-> **username is the business ID** (`customer_id` / `supplier_id`) plus a generated password. They log
-> in with that ID. The plaintext password is returned to the internal member **once** to hand over.
+> **Auth model:** only internal **employees** self-register, and only with a **company official
+> email** (domain configured via `EMPLOYEE_EMAIL_DOMAINS`, default `mamamicrotechnology.com`).
+> Customers and suppliers do **not** self-register — an internal member creates their record and the
+> system issues a login whose **username is the business ID** (`customer_id` / `supplier_id`) plus a
+> generated password. They log in with that ID. The plaintext password is returned to the internal
+> member **once** to hand over.
 
 | Method & path                       | Role      | Purpose |
 |-------------------------------------|-----------|---------|
-| `POST /api/auth/register`           | public    | **Internal employees only** — register with email + password |
+| `POST /api/auth/register`           | public    | **Internal employees only** — requires a company email (`EMPLOYEE_EMAIL_DOMAINS`) + password |
 | `POST /api/auth/login`              | public    | Login with `{ login, password }` — `login` is an email (internal) or an ID (customer/supplier) |
 | `GET  /api/auth/me`                 | any       | Current user + linked profile |
 | `GET/POST /api/customers/:id/account` | internal | Check / create-or-reset a customer login (returns credentials once) |

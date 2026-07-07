@@ -6,17 +6,29 @@ const { signToken, authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Company official email domains allowed to register as employees. Configure via
+// EMPLOYEE_EMAIL_DOMAINS (comma-separated); defaults to the MMT domain.
+const EMPLOYEE_DOMAINS = (process.env.EMPLOYEE_EMAIL_DOMAINS || 'mamamicrotechnology.com')
+  .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
+
+function isCompanyEmail(email) {
+  const at = String(email).lastIndexOf('@');
+  if (at < 0) return false;
+  return EMPLOYEE_DOMAINS.includes(email.slice(at + 1).toLowerCase());
+}
+
 /**
- * POST /api/auth/register — INTERNAL EMPLOYEES ONLY.
- * Only company employees (role = internal) may self-register. Customers and
- * suppliers do NOT self-register: an internal member creates their record and
- * issues a login (their business ID + a generated password). See
- * POST /api/customers and POST /api/suppliers.
+ * POST /api/auth/register — INTERNAL EMPLOYEES ONLY, company email required.
+ * Only company employees with an official company email (see EMPLOYEE_DOMAINS)
+ * may self-register. Customers and suppliers do NOT self-register: an internal
+ * member creates their record and issues a login (their business ID + a
+ * generated password). See POST /api/customers and POST /api/suppliers.
  */
 router.post(
   '/register',
   asyncHandler(async (req, res) => {
-    const { email, password, full_name, phone } = req.body;
+    const { password, full_name, phone } = req.body;
+    const email = (req.body.email || '').trim();
     const role = req.body.role || 'internal';
     if (role !== 'internal') {
       return res.status(403).json({
@@ -25,6 +37,11 @@ router.post(
     }
     if (!email || !password) {
       return res.status(400).json({ error: 'email and password are required' });
+    }
+    if (!isCompanyEmail(email)) {
+      return res.status(403).json({
+        error: `Registration is restricted to company email addresses (@${EMPLOYEE_DOMAINS[0]}).`,
+      });
     }
 
     const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
