@@ -1,0 +1,49 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+
+// API base URL. Override per-environment via app.json > expo.extra.apiBaseUrl.
+// On a physical device, replace localhost with your machine's LAN IP.
+export const API_BASE_URL =
+  Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:4000/api';
+
+const TOKEN_KEY = 'mmt_token';
+
+export async function setToken(token) {
+  if (token) await AsyncStorage.setItem(TOKEN_KEY, token);
+  else await AsyncStorage.removeItem(TOKEN_KEY);
+}
+
+export async function getToken() {
+  return AsyncStorage.getItem(TOKEN_KEY);
+}
+
+/**
+ * Thin fetch wrapper: attaches the bearer token, parses JSON, and throws an
+ * Error with the server message on non-2xx responses.
+ */
+export async function api(path, { method = 'GET', body, auth = true } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (auth) {
+    const token = await getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  let data = null;
+  const text = await res.text();
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
+  }
+  if (!res.ok) {
+    throw new Error(data?.error || `Request failed (${res.status})`);
+  }
+  return data;
+}

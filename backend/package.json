@@ -1,0 +1,27 @@
+{
+  "name": "mmt-backend",
+  "version": "0.1.0",
+  "description": "MMT Mobile Application backend — Node.js + Express + PostgreSQL API for the Customer / Internal / Supplier interfaces.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:setup": "node scripts/setupDb.js",
+    "db:import-legacy": "node scripts/importLegacy.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.12.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
