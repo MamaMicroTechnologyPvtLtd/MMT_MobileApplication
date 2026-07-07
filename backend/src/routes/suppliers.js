@@ -1,13 +1,15 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { nextSupplierId } = require('../utils/idGenerator');
+const { generatePassword } = require('../utils/password');
 
 const router = express.Router();
 
 const EDITABLE = [
-  'supplier_firm_name', 'contact_person_name', 'address', 'city', 'state',
+  'supplier_firm_name', 'contact_person_name', 'email', 'address', 'city', 'state',
   'country', 'pincode', 'ward', 'zone', 'landline', 'mobile', 'alt_number',
   'fax_num', 'current_gst_info', 'pan_number', 'aadhar_number', 'account_number',
   'account_holder_name', 'ifsc', 'branch', 'bank_name', 'supplier_type', 'status',
@@ -47,13 +49,16 @@ router.get(
 );
 
 /**
- * POST /api/suppliers  (Internal) — add new supplier (continues S-series).
+ * POST /api/suppliers  (Internal) — add new supplier (continues S-series) and
+ * issue a login: username IS the supplier_id, password supplied or generated.
+ * The plaintext password is returned ONCE to hand to the supplier.
  */
 router.post(
   '/',
   authenticate,
   requireRole('internal'),
   asyncHandler(async (req, res) => {
+    const password = req.body.password || generatePassword();
     const supplier = await withTransaction(async (client) => {
       const supplierId = await nextSupplierId(client);
       const cols = ['supplier_id'];
@@ -69,9 +74,21 @@ router.post(
         `INSERT INTO suppliers (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
         vals
       );
-      return rows[0];
+      const created = rows[0];
+
+      const password_hash = await bcrypt.hash(password, 10);
+      await client.query(
+        `INSERT INTO users (role, email, password_hash, full_name, phone, supplier_id)
+         VALUES ('supplier', $1, $2, $3, $4, $5)`,
+        [created.email || null, password_hash, created.supplier_firm_name || null,
+         created.mobile || null, supplierId]
+      );
+      return created;
     });
-    return res.status(201).json(supplier);
+    return res.status(201).json({
+      ...supplier,
+      credentials: { username: supplier.supplier_id, password },
+    });
   })
 );
 
@@ -88,6 +105,49 @@ router.get(
     const { rows } = await query('SELECT * FROM suppliers WHERE supplier_id = $1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Supplier not found' });
     return res.json(rows[0]);
+  })
+);
+
+/**
+ * GET /api/suppliers/:id/account  (Internal) — whether a login exists.
+ * The login username is always the supplier_id.
+ */
+router.get(
+  '/:id/account',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      'SELECT id, created_at FROM users WHERE supplier_id = $1',
+      [req.params.id]
+    );
+    return res.json({ has_login: rows.length > 0, username: req.params.id, account: rows[0] || null });
+  })
+);
+
+/**
+ * POST /api/suppliers/:id/account  (Internal) — create or reset the login
+ * password for a supplier. Returns the new plaintext password once.
+ */
+router.post(
+  '/:id/account',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const sup = await query('SELECT supplier_id, supplier_firm_name, email, mobile FROM suppliers WHERE supplier_id = $1', [req.params.id]);
+    if (sup.rows.length === 0) return res.status(404).json({ error: 'Supplier not found' });
+    const s = sup.rows[0];
+    const password = req.body.password || generatePassword();
+    const password_hash = await bcrypt.hash(password, 10);
+
+    await query(
+      `INSERT INTO users (role, email, password_hash, full_name, phone, supplier_id)
+       VALUES ('supplier', $1, $2, $3, $4, $5)
+       ON CONFLICT (supplier_id) WHERE supplier_id IS NOT NULL
+       DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()`,
+      [s.email || null, password_hash, s.supplier_firm_name || null, s.mobile || null, req.params.id]
+    );
+    return res.json({ credentials: { username: req.params.id, password } });
   })
 );
 

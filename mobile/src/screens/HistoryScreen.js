@@ -2,33 +2,53 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, RefreshControl,
 } from 'react-native';
+import { Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { api } from '../api/client';
+import { api, fileUrl } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Card, Badge, EmptyState } from '../components/ui';
 import { colors, spacing, radius } from '../theme';
 
-// History, shown category-wise (per the customer spec): send-enquiry history,
-// received-quotation history, delivery-status history, payments history, and
-// notifications/offers history.
-const CATEGORIES = [
+// History, shown category-wise. Customers see received-quotation history; the
+// internal team sees the orders feed in its place.
+const CUSTOMER_CATEGORIES = [
   { key: 'enquiries', label: 'Enquiries', icon: '📝', path: '/enquiries' },
   { key: 'quotations', label: 'Quotations', icon: '📄', path: '/quotations' },
   { key: 'deliveries', label: 'Deliveries', icon: '🚚', path: '/deliveries' },
   { key: 'payments', label: 'Payments', icon: '💳', path: '/payments' },
   { key: 'notifications', label: 'Offers', icon: '🔔', path: '/notifications' },
 ];
+const INTERNAL_CATEGORIES = [
+  { key: 'enquiries', label: 'Enquiries', icon: '📝', path: '/enquiries' },
+  { key: 'orders', label: 'Orders', icon: '📦', path: '/orders' },
+  { key: 'deliveries', label: 'Deliveries', icon: '🚚', path: '/deliveries' },
+  { key: 'payments', label: 'Payments', icon: '💳', path: '/payments' },
+  { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
+];
+const SUPPLIER_CATEGORIES = [
+  { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
+];
+
+const categoriesForRole = (role) => {
+  if (role === 'internal') return INTERNAL_CATEGORIES;
+  if (role === 'supplier') return SUPPLIER_CATEGORIES;
+  return CUSTOMER_CATEGORIES;
+};
 
 const money = (v) => (v == null ? '—' : `₹${Number(v).toLocaleString('en-IN')}`);
 const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 export default function HistoryScreen() {
-  const [active, setActive] = useState('enquiries');
+  const { user } = useAuth();
+  const CATEGORIES = categoriesForRole(user?.role);
+  const [active, setActive] = useState(CATEGORIES[0].key);
   const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async (key) => {
-    const cat = CATEGORIES.find((c) => c.key === key);
+    const cat = categoriesForRole(user?.role).find((c) => c.key === key);
+    if (!cat) return;
     setLoading(true);
     try {
       setData(await api(cat.path));
@@ -37,7 +57,7 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useFocusEffect(useCallback(() => { load(active); }, [active, load]));
 
@@ -61,6 +81,15 @@ export default function HistoryScreen() {
             <Text style={styles.meta}>{fmt(item.created_at)}</Text>
           </Card>
         );
+      case 'orders':
+        return (
+          <Card>
+            <Head id={item.order_id} status={item.status} />
+            <Text style={styles.title}>{[item.first_name, item.last_name].filter(Boolean).join(' ') || item.customer_id}</Text>
+            <Text style={styles.body} numberOfLines={2}>{item.requirement || '—'}</Text>
+            <Text style={styles.meta}>{item.quotes_count || 0} quotes · {fmt(item.created_at)}</Text>
+          </Card>
+        );
       case 'deliveries':
         return (
           <Card>
@@ -69,6 +98,13 @@ export default function HistoryScreen() {
             <Text style={styles.body}>
               {[item.vehicle_number, item.driver_name, item.driver_number].filter(Boolean).join(' • ')}
             </Text>
+            {(item.truck_image_url || item.truck_video_url || item.invoice_url) ? (
+              <View style={styles.links}>
+                {item.truck_image_url ? <Link label="📷 Truck photo" url={item.truck_image_url} /> : null}
+                {item.truck_video_url ? <Link label="🎥 Truck video" url={item.truck_video_url} /> : null}
+                {item.invoice_url ? <Link label="🧾 Invoice" url={item.invoice_url} /> : null}
+              </View>
+            ) : null}
             <Text style={styles.meta}>Order {item.order_id} · {fmt(item.created_at)}</Text>
           </Card>
         );
@@ -98,7 +134,8 @@ export default function HistoryScreen() {
   };
 
   const keyFor = (item, i) =>
-    item.enquiry_id || item.quotation_id || item.delivery_id || String(item.id) || String(i);
+    item.enquiry_id || item.quotation_id || item.order_id || item.delivery_id
+    || (item.id != null ? String(item.id) : String(i));
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -137,6 +174,12 @@ function Head({ id, status }) {
   );
 }
 
+function Link({ label, url }) {
+  return (
+    <Text style={styles.link} onPress={() => Linking.openURL(fileUrl(url))}>{label}</Text>
+  );
+}
+
 const styles = StyleSheet.create({
   tabs: { maxHeight: 56, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.card },
   tab: {
@@ -154,4 +197,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.muted, marginTop: 6 },
   notifTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   notifDot: { color: colors.primary, fontSize: 12 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: 6 },
+  link: { color: colors.primary, fontWeight: '700', fontSize: 13 },
 });
+

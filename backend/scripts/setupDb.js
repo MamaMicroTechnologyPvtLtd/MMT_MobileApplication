@@ -21,6 +21,20 @@ const LEGACY_COUNTERS = {
 async function main() {
   const schema = fs.readFileSync(path.join(__dirname, '..', 'src', 'db', 'schema.sql'), 'utf8');
   await pool.query(schema);
+  // Idempotent column additions for databases created before a column existed.
+  await pool.query('ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT');
+  // email is optional now (customers/suppliers log in by ID, not email).
+  await pool.query('ALTER TABLE users ALTER COLUMN email DROP NOT NULL');
+  // delivery media (truck photo/video).
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_image_url TEXT');
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_video_url TEXT');
+  // Expo push token per login.
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
+  // Payment gateway fields + 'processing' status.
+  await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_order_id TEXT');
+  await pool.query(`ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_status_check`);
+  await pool.query(`ALTER TABLE payments ADD CONSTRAINT payments_status_check
+                    CHECK (status IN ('pending', 'processing', 'paid', 'failed'))`);
   // eslint-disable-next-line no-console
   console.log('✓ schema applied');
 

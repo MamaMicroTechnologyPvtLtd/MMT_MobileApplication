@@ -8,18 +8,18 @@ import { colors, spacing } from '../theme';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const onLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing details', 'Enter your email and password.');
+    if (!identifier || !password) {
+      Alert.alert('Missing details', 'Enter your ID (or email) and password.');
       return;
     }
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(identifier.trim(), password);
     } catch (e) {
       Alert.alert('Login failed', e.message);
     } finally {
@@ -34,16 +34,19 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.logo}>MMT</Text>
           <Text style={styles.tag}>Mama Micro Technology</Text>
         </View>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Log in to send enquiries and track your orders.</Text>
+        <Text style={styles.title}>Log in</Text>
+        <Text style={styles.subtitle}>
+          Customers &amp; suppliers: use the ID and password given by the MMT team.
+          Employees: use your email.
+        </Text>
 
         <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
+          label="ID or email"
+          value={identifier}
+          onChangeText={setIdentifier}
+          placeholder="e.g. MH_91_Z1_C1823 or you@mmt.com"
           autoCapitalize="none"
-          keyboardType="email-address"
+          autoCorrect={false}
         />
         <Field
           label="Password"
@@ -55,9 +58,13 @@ export default function LoginScreen({ navigation }) {
         <Button title="Log in" onPress={onLogin} loading={loading} />
 
         <View style={styles.row}>
-          <Text style={styles.muted}>New customer?</Text>
-          <Text style={styles.link} onPress={() => navigation.navigate('Register')}> Create an account</Text>
+          <Text style={styles.muted}>MMT employee?</Text>
+          <Text style={styles.link} onPress={() => navigation.navigate('Register')}> Register here</Text>
         </View>
+        <Text style={styles.help}>
+          Don&apos;t have credentials? Customers and suppliers are onboarded by the MMT team — contact
+          us to get your ID and password.
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -69,8 +76,9 @@ const styles = StyleSheet.create({
   logo: { fontSize: 44, fontWeight: '900', color: colors.primary, letterSpacing: 2 },
   tag: { fontSize: 14, color: colors.muted, marginTop: 4 },
   title: { fontSize: 24, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 15, color: colors.muted, marginBottom: spacing.xl, marginTop: 4 },
+  subtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl, marginTop: 4, lineHeight: 20 },
   row: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   muted: { color: colors.muted },
   link: { color: colors.primary, fontWeight: '700' },
+  help: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: spacing.lg, lineHeight: 17 },
 });

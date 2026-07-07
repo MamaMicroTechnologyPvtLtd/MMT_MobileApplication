@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api, setToken, getToken } from '../api/client';
+import { registerForPush } from '../push';
 
 const AuthContext = createContext(null);
 
@@ -13,6 +14,8 @@ export function AuthProvider({ children }) {
       const data = await api('/auth/me');
       setUser(data.user);
       setProfile(data.profile);
+      // Register this device for push once we have an authenticated session.
+      registerForPush();
     } catch {
       // token invalid/expired
       await setToken(null);
@@ -29,8 +32,10 @@ export function AuthProvider({ children }) {
     })();
   }, [loadMe]);
 
-  const login = useCallback(async (email, password) => {
-    const data = await api('/auth/login', { method: 'POST', auth: false, body: { email, password } });
+  // `identifier` is an email (internal employees) or a business ID
+  // (customer_id / supplier_id) for customers and suppliers.
+  const login = useCallback(async (identifier, password) => {
+    const data = await api('/auth/login', { method: 'POST', auth: false, body: { login: identifier, password } });
     await setToken(data.token);
     setUser(data.user);
     await loadMe();

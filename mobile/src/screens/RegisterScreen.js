@@ -6,6 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { Button, Field } from '../components/ui';
 import { colors, spacing } from '../theme';
 
+// Employee (internal) registration ONLY, with a company official email.
+// Customers and suppliers do not self-register — they are onboarded by an
+// internal member who issues their ID + password.
+const COMPANY_DOMAIN = 'mamamicrotechnology.com';
+
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', password: '' });
@@ -18,10 +23,13 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Missing details', 'Email and password are required.');
       return;
     }
+    if (!form.email.trim().toLowerCase().endsWith(`@${COMPANY_DOMAIN}`)) {
+      Alert.alert('Company email required', `Use your official @${COMPANY_DOMAIN} email to register as an employee.`);
+      return;
+    }
     setLoading(true);
     try {
-      await register({ ...form, email: form.email.trim(), role: 'customer' });
-      // On success AuthProvider sets the user and the app switches to the main stack.
+      await register({ ...form, email: form.email.trim(), role: 'internal' });
     } catch (e) {
       Alert.alert('Registration failed', e.message);
     } finally {
@@ -32,20 +40,21 @@ export default function RegisterScreen({ navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create your account</Text>
+        <Text style={styles.title}>Employee registration</Text>
         <Text style={styles.subtitle}>
-          You&apos;ll be registered as a customer. A customer ID is assigned automatically.
+          For MMT (MAMA Home) company employees only, using your official @{COMPANY_DOMAIN} email.
+          Customers and suppliers receive their login credentials from the internal team.
         </Text>
 
         <Field label="Full name" value={form.full_name} onChangeText={set('full_name')} placeholder="Your name" />
-        <Field label="Email" value={form.email} onChangeText={set('email')} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address" />
+        <Field label="Company email" value={form.email} onChangeText={set('email')} placeholder={`you@${COMPANY_DOMAIN}`} autoCapitalize="none" keyboardType="email-address" />
         <Field label="Mobile number" value={form.phone} onChangeText={set('phone')} placeholder="10-digit mobile" keyboardType="phone-pad" />
         <Field label="Password" value={form.password} onChangeText={set('password')} placeholder="Choose a password" secureTextEntry />
 
-        <Button title="Create account" onPress={onRegister} loading={loading} />
+        <Button title="Create employee account" onPress={onRegister} loading={loading} />
 
         <View style={styles.row}>
-          <Text style={styles.muted}>Already registered?</Text>
+          <Text style={styles.muted}>Already have an account?</Text>
           <Text style={styles.link} onPress={() => navigation.goBack()}> Log in</Text>
         </View>
       </ScrollView>
@@ -56,7 +65,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, backgroundColor: colors.bg },
   title: { fontSize: 24, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 15, color: colors.muted, marginBottom: spacing.xl, marginTop: 4 },
+  subtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl, marginTop: 4, lineHeight: 20 },
   row: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
   muted: { color: colors.muted },
   link: { color: colors.primary, fontWeight: '700' },

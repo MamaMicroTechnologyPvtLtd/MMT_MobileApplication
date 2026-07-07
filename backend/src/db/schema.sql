@@ -17,18 +17,26 @@ CREATE TABLE IF NOT EXISTS id_counters (
 -- Auth users. Every login maps to exactly one role. Customer/Supplier logins
 -- are linked to their business record; Internal users are company employees.
 -- ---------------------------------------------------------------------------
+-- Internal employees log in with their email; customers/suppliers log in with
+-- their business ID (customer_id / supplier_id) — the login username IS the ID,
+-- issued by an internal member together with a password. email is therefore
+-- optional (nullable) and only used for internal accounts (and as contact info).
 CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   role          TEXT NOT NULL CHECK (role IN ('customer', 'internal', 'supplier')),
-  email         TEXT UNIQUE NOT NULL,
+  email         TEXT UNIQUE,
   password_hash TEXT NOT NULL,
   full_name     TEXT,
   phone         TEXT,
   customer_id   TEXT,            -- FK -> customers.customer_id (for role = customer)
   supplier_id   TEXT,            -- FK -> suppliers.supplier_id (for role = supplier)
+  push_token    TEXT,            -- Expo push token for this device/login
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- One login per business ID; the ID doubles as the login username.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_customer_id ON users (customer_id) WHERE customer_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supplier_id ON users (supplier_id) WHERE supplier_id IS NOT NULL;
 
 -- ---------------------------------------------------------------------------
 -- Customers (mirrors legacy customer_details, with region fields promoted to
@@ -72,6 +80,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   supplier_id         TEXT PRIMARY KEY,      -- e.g. MH_91_Z1_S101
   supplier_firm_name  TEXT,
   contact_person_name TEXT,
+  email               TEXT,
   address             TEXT,
   city                TEXT,
   state               TEXT,
@@ -237,6 +246,8 @@ CREATE TABLE IF NOT EXISTS deliveries (
   po_url          TEXT,
   bill_url        TEXT,
   eway_bill_url   TEXT,
+  truck_image_url TEXT,
+  truck_video_url TEXT,
   vehicle_number  TEXT,
   driver_name     TEXT,
   driver_number   TEXT,
@@ -264,8 +275,9 @@ CREATE TABLE IF NOT EXISTS payments (
     CHECK (type IN ('advance', 'final', 'refund')),
   method       TEXT,
   reference    TEXT,
+  gateway_order_id TEXT,
   status       TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'paid', 'failed')),
+    CHECK (status IN ('pending', 'processing', 'paid', 'failed')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -1,28 +1,47 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { query, withTransaction } = require('../config/db');
+const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { signToken, authenticate } = require('../middleware/auth');
-const { nextCustomerId } = require('../utils/idGenerator');
 
 const router = express.Router();
 
+// Company official email domains allowed to register as employees. Configure via
+// EMPLOYEE_EMAIL_DOMAINS (comma-separated); defaults to the MMT domain.
+const EMPLOYEE_DOMAINS = (process.env.EMPLOYEE_EMAIL_DOMAINS || 'mamamicrotechnology.com')
+  .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
+
+function isCompanyEmail(email) {
+  const at = String(email).lastIndexOf('@');
+  if (at < 0) return false;
+  return EMPLOYEE_DOMAINS.includes(email.slice(at + 1).toLowerCase());
+}
+
 /**
- * POST /api/auth/register
- * Registers a login. For role=customer we also create a customer record and
- * allocate the next customer id in the continued series. Internal/supplier
- * self-registration is allowed but suppliers/internal records are normally
- * created by an Internal member (see /api/suppliers).
+ * POST /api/auth/register — INTERNAL EMPLOYEES ONLY, company email required.
+ * Only company employees with an official company email (see EMPLOYEE_DOMAINS)
+ * may self-register. Customers and suppliers do NOT self-register: an internal
+ * member creates their record and issues a login (their business ID + a
+ * generated password). See POST /api/customers and POST /api/suppliers.
  */
 router.post(
   '/register',
   asyncHandler(async (req, res) => {
-    const { email, password, full_name, phone, role = 'customer' } = req.body;
+    const { password, full_name, phone } = req.body;
+    const email = (req.body.email || '').trim();
+    const role = req.body.role || 'internal';
+    if (role !== 'internal') {
+      return res.status(403).json({
+        error: 'Only internal employees can register. Customers and suppliers receive login credentials from the MMT team.',
+      });
+    }
     if (!email || !password) {
       return res.status(400).json({ error: 'email and password are required' });
     }
-    if (!['customer', 'internal', 'supplier'].includes(role)) {
-      return res.status(400).json({ error: 'invalid role' });
+    if (!isCompanyEmail(email)) {
+      return res.status(403).json({
+        error: `Registration is restricted to company email addresses (@${EMPLOYEE_DOMAINS[0]}).`,
+      });
     }
 
     const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -31,34 +50,16 @@ router.post(
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-
-    const user = await withTransaction(async (client) => {
-      let customerId = null;
-      if (role === 'customer') {
-        customerId = await nextCustomerId(client);
-        // split name into first/last for the customer record
-        const [firstName, ...rest] = (full_name || '').trim().split(' ');
-        await client.query(
-          `INSERT INTO customers (customer_id, first_name, last_name, email, mobile_num)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [customerId, firstName || full_name || null, rest.join(' ') || null, email, phone || null]
-        );
-      }
-
-      const { rows } = await client.query(
-        `INSERT INTO users (role, email, password_hash, full_name, phone, customer_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, role, email, full_name, phone, customer_id, supplier_id`,
-        [role, email, password_hash, full_name || null, phone || null, customerId]
-      );
-      return rows[0];
-    });
+    const { rows } = await query(
+      `INSERT INTO users (role, email, password_hash, full_name, phone)
+       VALUES ('internal', $1, $2, $3, $4)
+       RETURNING id, role, email, full_name, phone, customer_id, supplier_id`,
+      [email, password_hash, full_name || null, phone || null]
+    );
+    const user = rows[0];
 
     const token = signToken({
-      id: user.id,
-      role: user.role,
-      customer_id: user.customer_id,
-      supplier_id: user.supplier_id,
+      id: user.id, role: user.role, customer_id: user.customer_id, supplier_id: user.supplier_id,
     });
     return res.status(201).json({ token, user });
   })
@@ -66,15 +67,21 @@ router.post(
 
 /**
  * POST /api/auth/login
+ * `login` is an email (internal employees) OR a business ID — customer_id /
+ * supplier_id (customers & suppliers). Backwards compatible with `email`.
  */
 router.post(
   '/login',
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' });
+    const identifier = (req.body.login || req.body.email || '').trim();
+    const { password } = req.body;
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'login (email or ID) and password are required' });
     }
-    const { rows } = await query('SELECT * FROM users WHERE email = $1', [email]);
+    const { rows } = await query(
+      `SELECT * FROM users WHERE email = $1 OR customer_id = $1 OR supplier_id = $1 LIMIT 1`,
+      [identifier]
+    );
     const user = rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ error: 'Invalid credentials' });

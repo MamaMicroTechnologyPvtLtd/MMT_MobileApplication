@@ -1,8 +1,10 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { nextCustomerId } = require('../utils/idGenerator');
+const { generatePassword } = require('../utils/password');
 
 const router = express.Router();
 
@@ -60,14 +62,18 @@ router.get(
 );
 
 /**
- * POST /api/customers  (Internal) — add a new customer (continues C-series).
+ * POST /api/customers  (Internal) — add a new customer (continues C-series) and
+ * issue a login: the login username IS the customer_id and the password is
+ * supplied by the internal member or generated. The plaintext password is
+ * returned ONCE so it can be handed to the customer.
  */
 router.post(
   '/',
   authenticate,
   requireRole('internal'),
   asyncHandler(async (req, res) => {
-    const customer = await withTransaction(async (client) => {
+    const password = req.body.password || generatePassword();
+    const result = await withTransaction(async (client) => {
       const customerId = await nextCustomerId(client);
       const cols = ['customer_id'];
       const vals = [customerId];
@@ -83,9 +89,65 @@ router.post(
          VALUES (${placeholders}, $${vals.length + 1}) RETURNING *`,
         [...vals, String(req.user.id)]
       );
-      return rows[0];
+      const customer = rows[0];
+
+      const password_hash = await bcrypt.hash(password, 10);
+      const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || null;
+      await client.query(
+        `INSERT INTO users (role, email, password_hash, full_name, phone, customer_id)
+         VALUES ('customer', $1, $2, $3, $4, $5)`,
+        [customer.email || null, password_hash, fullName, customer.mobile_num || null, customerId]
+      );
+      return customer;
     });
-    return res.status(201).json(customer);
+    // credentials.username = the customer_id the customer logs in with.
+    return res.status(201).json({
+      ...result,
+      credentials: { username: result.customer_id, password },
+    });
+  })
+);
+
+/**
+ * GET /api/customers/:id/account  (Internal) — does a login exist?
+ */
+router.get(
+  '/:id/account',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query('SELECT id, created_at FROM users WHERE customer_id = $1', [req.params.id]);
+    return res.json({ has_login: rows.length > 0, username: req.params.id, account: rows[0] || null });
+  })
+);
+
+/**
+ * POST /api/customers/:id/account  (Internal) — create or reset the login
+ * password for a customer. Returns the new plaintext password once.
+ */
+router.post(
+  '/:id/account',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const cust = await query('SELECT customer_id, first_name, last_name, email, mobile_num FROM customers WHERE customer_id = $1', [req.params.id]);
+    if (cust.rows.length === 0) return res.status(404).json({ error: 'Customer not found' });
+    const c = cust.rows[0];
+    const password = req.body.password || generatePassword();
+    const password_hash = await bcrypt.hash(password, 10);
+    const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ') || null;
+
+    const { rows } = await query(
+      `INSERT INTO users (role, email, password_hash, full_name, phone, customer_id)
+       VALUES ('customer', $1, $2, $3, $4, $5)
+       ON CONFLICT (customer_id) WHERE customer_id IS NOT NULL
+       DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()
+       RETURNING id`,
+      [c.email || null, password_hash, fullName, c.mobile_num || null, req.params.id]
+    );
+    return res.status(rows.length ? 200 : 201).json({
+      credentials: { username: req.params.id, password },
+    });
   })
 );
 

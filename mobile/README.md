@@ -1,7 +1,13 @@
 # MMT Mobile (React Native / Expo)
 
-The **Customer interface** — built first. Internal and Supplier interfaces follow, reusing the same
-API client, auth context, and design system.
+Role-based app: on login the user is routed to the interface for their role
+(**Customer**, **Internal / MAMA Home**, or **Supplier**), all sharing one API client, auth context,
+and design system.
+
+**Access model:** only internal **employees** self-register (Register screen). Customers and
+suppliers are created by an internal member in the Directory — the app then shows their issued
+**login ID + password** to hand over. Everyone logs in on one screen: employees with their email,
+customers/suppliers with their **business ID** (`C####` / `S##`).
 
 ## Run
 
@@ -23,20 +29,55 @@ Ordered exactly per the spec: **form first, responses next, history last, profil
 | **Login / Register** | Register as a customer (a `C####` id is allocated automatically) and log in. |
 | **Send Enquiry** (home) | Input form to send an enquiry to Internal, plus your recent enquiries with status. |
 | **Quotations**    | Receive the quotation for an enquiry from the internal member; **Confirm** or **Reject**. |
+| **Payments**      | Advance/final payment requests with a **Pay now** checkout (Razorpay, or mock settlement in dev). |
 | **History**       | Category-wise: Enquiries · Quotations · Deliveries · Payments · Offers (notifications). |
 | **Profile** (top-right avatar) | Details of the registered + logged-in customer; log out. |
+
+## Internal (MAM Home) interface — what's built
+
+Layout per the spec: **enquiries on top → pincode + supplier select + requirement → SEND → Comparison
+Sheet → quote customer → delivery.** Profile top-right, history last.
+
+| Screen              | Purpose |
+|---------------------|---------|
+| **Dashboard** (home) | Stat tiles (customers, suppliers, new enquiries, open orders, quotes to action, in-delivery), revenue/margin, orders-by-stage bars, and recent activity. |
+| **Enquiries** | Customer enquiries on top; one tap creates Project + Order and opens the requirement form. |
+| **Send Requirement** | Enter pincode → list suppliers in that locality → select **up to 30** → requirement / note / quantity / price → **SEND** (in-app), then **WhatsApp** each supplier via a pre-filled `wa.me` link (or auto-sent when the WhatsApp Cloud API is configured). |
+| **Orders → Order detail** | The **Comparison Sheet** (person, company, location, GST, phone, mail, price, qty, duration, note) with per-supplier **Shortlist / Ask Final Quotation / Ask Final PO**, and **Export Excel** (.xlsx). |
+| **Quote Customer**   | Take a supplier quote, add GST / tax / margin (live total) + temp supplier id, send to the customer. |
+| **Create Delivery**  | Delivery ID + invoice/PO/bill/e-way links + vehicle & driver + status. |
+| **Directory**        | Search customers/suppliers by name or pincode; **Add** (continues the id series) or **Edit** existing. |
+| **History**          | Category-wise: Enquiries · Orders · Deliveries · Payments · Alerts. |
+
+## Supplier interface — what's built
+
+Per the spec: **receive requirement (Order ID + details) → Reply → quotation PDF + duration
+(hrs/days/weeks) + note → submit → goes to Internal.** Below, Final Quotation / Final PO requests.
+
+| Screen             | Purpose |
+|--------------------|---------|
+| **Requirements** (home) | Requirements received from the MMT team (Order ID + requirement + note + qty + price range), each with a **Reply** button. Final Quotation / PO requests are highlighted. |
+| **Reply**          | Attach a quotation **PDF** (or image), set **duration** with a hrs/days/weeks selector, optional price/quantity, add a **note**, and submit. Reused for Final Quotation / Final PO. |
+| **Alerts**         | Notifications for the supplier. |
+| **Profile** (top-right) | Firm details of the logged-in supplier; log out. |
+
+File uploads use `expo-document-picker` → `POST /api/uploads` (served back from `/uploads`).
 
 ## Structure
 
 ```
 mobile/
-├── App.js                    Navigation root (auth stack ↔ customer tabs)
+├── App.js                    Role-based navigation root (customer / internal / supplier)
 └── src/
     ├── api/client.js         Fetch wrapper + token storage
     ├── context/AuthContext.js  Session, login/register/logout
     ├── theme.js              Colours, spacing, status colours
     ├── components/           Button, Field, Card, Badge, ProfileButton…
-    └── screens/              Login, Register, Enquiry, Quotations, History, Profile
+    └── screens/
+        ├── (customer)        Enquiry, Quotations, History, Profile
+        ├── internal/         Enquiries, Orders, OrderDetail, SendRequirement,
+        │                     QuoteCustomer, CreateDelivery, Directory, Customer/Supplier forms
+        └── supplier/         Requirements inbox, Reply (PDF + duration + note)
 ```
 
 ## Notes
