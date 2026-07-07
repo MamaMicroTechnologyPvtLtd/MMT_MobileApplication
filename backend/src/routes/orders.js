@@ -1,4 +1,5 @@
 const express = require('express');
+const ExcelJS = require('exceljs');
 const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, authenticateFlexible, requireRole } = require('../middleware/auth');
@@ -255,6 +256,84 @@ router.get(
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="ComparisonSheet_${req.params.id}.csv"`);
     return res.send(csv);
+  })
+);
+
+// Columns for the Comparison Sheet (label + width), matching the spec order.
+const COMPARISON_COLUMNS = [
+  { header: 'Supplier Person', key: 'contact_person_name', width: 20 },
+  { header: 'Supplier Company', key: 'supplier_firm_name', width: 26 },
+  { header: 'Location', key: 'location', width: 18 },
+  { header: 'GST', key: 'gst', width: 20 },
+  { header: 'Phone', key: 'phone', width: 16 },
+  { header: 'Price', key: 'price', width: 12 },
+  { header: 'Quantity', key: 'quantity', width: 14 },
+  { header: 'Duration', key: 'duration', width: 14 },
+  { header: 'Remark/Note', key: 'note', width: 28 },
+  { header: 'Mail ID', key: 'mail', width: 24 },
+  { header: 'Documentation', key: 'document_url', width: 30 },
+  { header: 'Stage', key: 'stage', width: 14 },
+  { header: 'Status', key: 'status', width: 14 },
+  { header: 'Supplier ID', key: 'supplier_id', width: 18 },
+];
+
+/**
+ * GET /api/orders/:id/comparison.xlsx  (Internal)
+ * Download the Comparison Sheet as a styled Excel (.xlsx) workbook.
+ */
+router.get(
+  '/:id/comparison.xlsx',
+  authenticateFlexible,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `SELECT sq.supplier_id, sq.price, sq.quantity, sq.duration, sq.duration_unit,
+              sq.note, sq.document_url, sq.stage, sq.status,
+              s.contact_person_name, s.supplier_firm_name, s.city AS location,
+              s.current_gst_info AS gst, s.mobile AS phone, s.email AS mail
+         FROM supplier_quotations sq
+         JOIN suppliers s ON s.supplier_id = sq.supplier_id
+        WHERE sq.order_id = $1
+        ORDER BY sq.price NULLS LAST, sq.created_at`,
+      [req.params.id]
+    );
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'MMT';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Comparison Sheet', {
+      views: [{ state: 'frozen', ySplit: 3 }],
+    });
+
+    const lastCol = String.fromCharCode(64 + COMPARISON_COLUMNS.length); // e.g. 'N'
+    ws.mergeCells(`A1:${lastCol}1`);
+    const title = ws.getCell('A1');
+    title.value = `Comparison Sheet — Order ${req.params.id}`;
+    title.font = { bold: true, size: 14, color: { argb: 'FF0F766E' } };
+    ws.addRow([]);
+
+    ws.columns = COMPARISON_COLUMNS.map((c) => ({ key: c.key, width: c.width }));
+    const headerRow = ws.addRow(COMPARISON_COLUMNS.map((c) => c.header));
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { bottom: { style: 'thin', color: { argb: 'FF0F766E' } } };
+    });
+
+    for (const r of rows) {
+      ws.addRow({
+        ...r,
+        price: r.price != null ? Number(r.price) : null,
+        duration: [r.duration, r.duration_unit].filter(Boolean).join(' '),
+      });
+    }
+    ws.getColumn('price').numFmt = '#,##0.00';
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="ComparisonSheet_${req.params.id}.xlsx"`);
+    await wb.xlsx.write(res);
+    return res.end();
   })
 );
 

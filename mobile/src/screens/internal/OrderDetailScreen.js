@@ -45,10 +45,10 @@ export default function OrderDetailScreen({ route, navigation }) {
     }
   };
 
-  const exportCsv = async () => {
+  const exportSheet = async () => {
     try {
       const token = await getToken();
-      const url = `${API_BASE_URL}/orders/${orderId}/comparison.csv?token=${encodeURIComponent(token)}`;
+      const url = `${API_BASE_URL}/orders/${orderId}/comparison.xlsx?token=${encodeURIComponent(token)}`;
       const ok = await Linking.canOpenURL(url);
       if (ok) await Linking.openURL(url);
       else Alert.alert('Export', 'Could not open the export link on this device.');
@@ -93,8 +93,8 @@ export default function OrderDetailScreen({ route, navigation }) {
           <Text style={styles.sub}>{rows.length} supplier response(s)</Text>
         </View>
         {rows.length > 0 ? (
-          <TouchableOpacity style={styles.exportBtn} onPress={exportCsv}>
-            <Text style={styles.exportText}>⬇ Export CSV</Text>
+          <TouchableOpacity style={styles.exportBtn} onPress={exportSheet}>
+            <Text style={styles.exportText}>⬇ Export Excel</Text>
           </TouchableOpacity>
         ) : null}
       </View>

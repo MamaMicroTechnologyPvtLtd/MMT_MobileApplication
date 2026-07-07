@@ -70,7 +70,8 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `GET  /api/orders`                  | internal/customer | Orders feed (with supplier/quote counts) |
 | `POST /api/orders/:id/send-suppliers` | internal | Send requirement to ≤30 suppliers (one click) |
 | `GET  /api/orders/:id/comparison`   | internal  | **Comparison Sheet** rows |
-| `GET  /api/orders/:id/comparison.csv` | internal | Download the Comparison Sheet as CSV (opens in Excel; `?token=`) |
+| `GET  /api/orders/:id/comparison.xlsx` | internal | Download the Comparison Sheet as a styled Excel workbook (`?token=`) |
+| `GET  /api/orders/:id/comparison.csv` | internal | Same, as CSV (`?token=`) |
 | `POST /api/orders/:id/quote-customer` | internal | Edit supplier quote (GST/tax/margin) → send to customer |
 | `PATCH /api/supplier-quotations/:id` | internal | Shortlist / ask Final Quotation / ask Final PO |
 | `GET  /api/supplier/requirements`   | supplier  | Requirements sent to me (+ my latest quote & stage) |
