@@ -29,6 +29,7 @@ Ordered exactly per the spec: **form first, responses next, history last, profil
 | **Login / Register** | Register as a customer (a `C####` id is allocated automatically) and log in. |
 | **Send Enquiry** (home) | Input form to send an enquiry to Internal, plus your recent enquiries with status. |
 | **Quotations**    | Receive the quotation for an enquiry from the internal member; **Confirm** or **Reject**. |
+| **Payments**      | Advance/final payment requests with a **Pay now** checkout (Razorpay, or mock settlement in dev). |
 | **History**       | Category-wise: Enquiries · Quotations · Deliveries · Payments · Offers (notifications). |
 | **Profile** (top-right avatar) | Details of the registered + logged-in customer; log out. |
 

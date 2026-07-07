@@ -275,8 +275,9 @@ CREATE TABLE IF NOT EXISTS payments (
     CHECK (type IN ('advance', 'final', 'refund')),
   method       TEXT,
   reference    TEXT,
+  gateway_order_id TEXT,
   status       TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'paid', 'failed')),
+    CHECK (status IN ('pending', 'processing', 'paid', 'failed')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );

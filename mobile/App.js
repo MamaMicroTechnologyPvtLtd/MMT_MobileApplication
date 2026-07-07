@@ -21,6 +21,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 // Customer
 import EnquiryScreen from './src/screens/EnquiryScreen';
 import QuotationsScreen from './src/screens/QuotationsScreen';
+import PaymentsScreen from './src/screens/PaymentsScreen';
 
 // Internal
 import DashboardScreen from './src/screens/internal/DashboardScreen';
@@ -59,6 +60,7 @@ function CustomerTabs({ navigation }) {
     <Tab.Navigator screenOptions={baseTabScreenOptions(navigation)}>
       <Tab.Screen name="Enquiry" component={EnquiryScreen} options={{ title: 'Send Enquiry', tabBarIcon: tabIcon('📝') }} />
       <Tab.Screen name="Quotations" component={QuotationsScreen} options={{ title: 'Quotations', tabBarIcon: tabIcon('📄') }} />
+      <Tab.Screen name="Payments" component={PaymentsScreen} options={{ title: 'Payments', tabBarIcon: tabIcon('💳') }} />
       <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'History', tabBarIcon: tabIcon('🕑') }} />
     </Tab.Navigator>
   );

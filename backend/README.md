@@ -60,7 +60,9 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `POST /api/quotations/:id/respond`  | customer  | Confirm / reject a quotation |
 | `GET  /api/deliveries`              | customer/internal | Delivery status history |
 | `GET  /api/payments`                | customer/internal | Payments history |
-| `POST /api/payments/:id/pay`        | customer  | Record advance/final payment |
+| `POST /api/payments/:id/create-order` | customer | Start checkout (Razorpay order, or mock in dev) |
+| `POST /api/payments/:id/verify`     | customer  | Verify Razorpay signature (or mock) → mark paid |
+| `POST /api/payments/:id/pay`        | customer  | Record a manual/offline settlement |
 | `GET  /api/notifications`           | any       | Notifications (incl. offers) |
 | `POST /api/notifications/:id/read`  | any       | Mark read |
 | `POST /api/notifications/register-token` | any  | Store the caller's Expo push token for device push |
