@@ -1,6 +1,6 @@
 # MMT Mobile Application
 
-A three-interface procurement platform for **Mama Micro Technology (MAM Home)**, rebuilding
+A three-interface procurement platform for **Mama Micro Technology (MAMA Home)**, rebuilding
 and extending the legacy software while **continuing the existing Customer / Supplier / Project /
 Order ID series** from the old database.
 
