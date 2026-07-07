@@ -23,6 +23,7 @@ import EnquiryScreen from './src/screens/EnquiryScreen';
 import QuotationsScreen from './src/screens/QuotationsScreen';
 
 // Internal
+import DashboardScreen from './src/screens/internal/DashboardScreen';
 import InternalEnquiriesScreen from './src/screens/internal/EnquiriesScreen';
 import OrdersScreen from './src/screens/internal/OrdersScreen';
 import OrderDetailScreen from './src/screens/internal/OrderDetailScreen';
@@ -67,6 +68,7 @@ function CustomerTabs({ navigation }) {
 function InternalTabs({ navigation }) {
   return (
     <Tab.Navigator screenOptions={baseTabScreenOptions(navigation)}>
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Dashboard', tabBarIcon: tabIcon('📊') }} />
       <Tab.Screen name="Enquiries" component={InternalEnquiriesScreen} options={{ title: 'Enquiries', tabBarIcon: tabIcon('📥') }} />
       <Tab.Screen name="Orders" component={OrdersScreen} options={{ title: 'Orders', tabBarIcon: tabIcon('📦') }} />
       <Tab.Screen name="Directory" component={DirectoryScreen} options={{ title: 'Directory', tabBarIcon: tabIcon('📇') }} />

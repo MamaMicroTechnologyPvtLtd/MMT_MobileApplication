@@ -51,6 +51,7 @@ never collide or skip. Format is preserved from the old software (`MH_91_Z1_C###
 | `POST /api/auth/register`           | public    | **Internal employees only** — requires a company email (`EMPLOYEE_EMAIL_DOMAINS`) + password |
 | `POST /api/auth/login`              | public    | Login with `{ login, password }` — `login` is an email (internal) or an ID (customer/supplier) |
 | `GET  /api/auth/me`                 | any       | Current user + linked profile |
+| `GET  /api/dashboard`               | internal  | Aggregate stats (counts, revenue, stages) + recent activity |
 | `GET/POST /api/customers/:id/account` | internal | Check / create-or-reset a customer login (returns credentials once) |
 | `POST /api/enquiries`               | customer  | Send enquiry to Internal |
 | `GET  /api/enquiries`               | customer/internal | Enquiry history / Internal enquiry list |
