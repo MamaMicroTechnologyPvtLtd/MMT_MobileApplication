@@ -83,6 +83,7 @@ cp .env.example .env          # set DATABASE_URL + JWT_SECRET
 npm install
 npm run db:setup              # create schema + seed id_counters at legacy values
 npm run db:import-legacy      # import old customers & suppliers from the provided dumps
+npm run db:seed-employees     # create seed employee logins (admin@ / manager@ …)
 npm run dev                   # start API on http://localhost:4000
 
 # 2. Mobile

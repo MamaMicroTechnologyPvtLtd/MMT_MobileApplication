@@ -10,8 +10,19 @@ cp .env.example .env         # set DATABASE_URL and JWT_SECRET
 npm install
 npm run db:setup             # apply schema + seed id_counters at legacy values
 npm run db:import-legacy     # import old customers & suppliers, advance counters
+npm run db:seed-employees    # create seed employee logins (admin + manager)
 npm run dev                  # http://localhost:4000
 ```
+
+`db:seed-employees` creates two internal logins so you can get in on a fresh DB:
+
+| Login (company email)             | Default password    |
+|-----------------------------------|---------------------|
+| `admin@mamamicrotechnology.com`   | `Admin@MMT2026`     |
+| `manager@mamamicrotechnology.com` | `Manager@MMT2026`   |
+
+Override before first run with `SEED_ADMIN_PASSWORD` / `SEED_MANAGER_PASSWORD`, and change the
+passwords after logging in. The script is idempotent (existing accounts are skipped, never reset).
 
 `db:import-legacy` reads `data/legacy/customer_db.sql` and `data/legacy/suplier_db.sql`
 (the provided old-software dumps) and:

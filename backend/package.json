@@ -9,6 +9,7 @@
     "dev": "node --watch src/server.js",
     "db:setup": "node scripts/setupDb.js",
     "db:import-legacy": "node scripts/importLegacy.js",
+    "db:seed-employees": "node scripts/seedEmployees.js",
     "test": "node --test"
   },
   "dependencies": {
