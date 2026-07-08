@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -63,11 +64,24 @@ export async function api(path, { method = 'GET', body, auth = true } = {}) {
 export async function uploadFile(file) {
   const token = await getToken();
   const form = new FormData();
-  form.append('file', {
-    uri: file.uri,
-    name: file.name || 'upload',
-    type: file.mimeType || 'application/octet-stream',
-  });
+  const name = file.name || 'upload';
+
+  if (file.file) {
+    // Web: expo-document-picker provides a real File object.
+    form.append('file', file.file, name);
+  } else if (Platform.OS === 'web') {
+    // Web fallback: turn the blob/data URI into a Blob.
+    const blob = await (await fetch(file.uri)).blob();
+    form.append('file', blob, name);
+  } else {
+    // Native (iOS/Android): the { uri, name, type } shape.
+    form.append('file', {
+      uri: file.uri,
+      name,
+      type: file.mimeType || 'application/octet-stream',
+    });
+  }
+
   const res = await fetch(`${API_BASE_URL}/uploads`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
