@@ -42,6 +42,9 @@ export default function SupplierRequirementsScreen({ navigation }) {
           <Badge label={isFinal ? item.stage : item.request_status} />
         </View>
         <Text style={[styles.stage, isFinal && { color: colors.accent }]}>{stageLabel[item.stage]}</Text>
+        {(item.category || item.subcategory) ? (
+          <Text style={styles.cat}>{[item.category, item.subcategory].filter(Boolean).join(' · ')}</Text>
+        ) : null}
         <Text style={styles.req}>{item.requirement || '—'}</Text>
         {item.note ? <Text style={styles.note}>Note: {item.note}</Text> : null}
         <Text style={styles.meta}>
@@ -66,6 +69,10 @@ export default function SupplierRequirementsScreen({ navigation }) {
             stage: item.stage,
             requirement: item.requirement,
             note: item.note,
+            category: item.category,
+            subcategory: item.subcategory,
+            fieldDefs: item.field_defs || [],
+            poUrl: item.po_url,
           })}
         />
       </Card>
@@ -92,6 +99,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   oid: { fontSize: 13, fontWeight: '800', color: colors.primary },
   stage: { fontSize: 13, fontWeight: '800', color: colors.info, marginBottom: 4 },
+  cat: { fontSize: 12, fontWeight: '700', color: colors.primary, marginBottom: 2 },
   req: { fontSize: 15, fontWeight: '600', color: colors.text },
   note: { fontSize: 13, color: colors.muted, marginTop: 2, fontStyle: 'italic' },
   meta: { fontSize: 12, color: colors.muted, marginTop: 6 },

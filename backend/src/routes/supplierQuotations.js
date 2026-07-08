@@ -18,7 +18,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { supplier_id } = req.user;
     const { orderId } = req.params;
-    const { price, quantity, duration, duration_unit, note, document_url, stage } = req.body;
+    const { price, quantity, duration, duration_unit, note, document_url, stage, details, message } = req.body;
 
     // The supplier must have been sent this requirement.
     const link = await query(
@@ -32,10 +32,11 @@ router.post(
     const quote = await withTransaction(async (client) => {
       const { rows } = await client.query(
         `INSERT INTO supplier_quotations
-           (order_id, supplier_id, price, quantity, duration, duration_unit, note, document_url, stage)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+           (order_id, supplier_id, price, quantity, duration, duration_unit, note, document_url, stage, details, message)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [orderId, supplier_id, price ?? null, quantity || null, duration || null,
-         duration_unit || null, note || null, document_url || null, stage || 'quotation']
+         duration_unit || null, note || null, document_url || null, stage || 'quotation',
+         details ? JSON.stringify(details) : '{}', message || null]
       );
       await client.query(
         `UPDATE order_suppliers SET status = 'responded' WHERE order_id = $1 AND supplier_id = $2`,
@@ -97,7 +98,9 @@ actionRouter.patch(
   authenticate,
   requireRole('internal'),
   asyncHandler(async (req, res) => {
-    const { status, request_stage } = req.body; // status: shortlisted|finalized|rejected
+    // status: shortlisted | finalized | rejected | deferred ("get back later")
+    // request_stage: final_quotation | final_po  (+ optional po_url = our PO)
+    const { status, request_stage, po_url } = req.body;
     const updated = await withTransaction(async (client) => {
       const q = await client.query(
         `UPDATE supplier_quotations SET status = COALESCE($1, status), updated_at = now()
@@ -111,18 +114,19 @@ actionRouter.patch(
       }
       const row = q.rows[0];
       if (request_stage) {
-        // ask this supplier for the next document (final_quotation | final_po)
+        // ask this supplier for the next document, attaching our PO if provided
         await client.query(
-          `UPDATE order_suppliers SET stage = $1, status = 'shortlisted'
+          `UPDATE order_suppliers SET stage = $1, status = 'shortlisted', po_url = COALESCE($4, po_url)
             WHERE order_id = $2 AND supplier_id = $3`,
-          [request_stage, row.order_id, row.supplier_id]
+          [request_stage, row.order_id, row.supplier_id, po_url || null]
         );
         await client.query(
           `INSERT INTO notifications (supplier_id, type, title, body, data)
            VALUES ($1, 'order', $2, $3, $4)`,
           [row.supplier_id, `Please send ${request_stage.replace('_', ' ')} · ${row.order_id}`,
-           'The MMT team shortlisted your quotation.',
-           JSON.stringify({ order_id: row.order_id, stage: request_stage })]
+           po_url ? 'The MMT team attached a PO — please send your final quotation.'
+             : 'The MMT team shortlisted your quotation.',
+           JSON.stringify({ order_id: row.order_id, stage: request_stage, po_url: po_url || null })]
         );
       }
       return row;
@@ -130,7 +134,7 @@ actionRouter.patch(
     if (request_stage) {
       pushSupplier(updated.supplier_id, {
         title: `Please send ${request_stage.replace('_', ' ')} · ${updated.order_id}`,
-        body: 'The MMT team shortlisted your quotation.',
+        body: po_url ? 'A PO has been attached.' : 'The MMT team shortlisted your quotation.',
         data: { type: 'order', order_id: updated.order_id, stage: request_stage },
       }).catch(() => {});
     }

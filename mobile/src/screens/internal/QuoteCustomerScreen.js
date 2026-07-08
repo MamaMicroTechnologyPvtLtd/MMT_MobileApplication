@@ -74,7 +74,7 @@ export default function QuoteCustomerScreen({ route, navigation }) {
         </View>
         <View style={styles.two}>
           <View style={styles.half}><Field label="Quantity" value={form.quantity} onChangeText={set('quantity')} placeholder="200 bags" /></View>
-          <View style={styles.half}><Field label="Duration" value={form.duration} onChangeText={set('duration')} placeholder="3 days" /></View>
+          <View style={styles.half}><Field label="Delivery duration (from confirmation)" value={form.duration} onChangeText={set('duration')} placeholder="e.g. 3 days" /></View>
         </View>
         <Field label="Temp supplier ID (shown to customer)" value={form.temp_supplier_id} onChangeText={set('temp_supplier_id')} placeholder="e.g. MMT-TS-01" />
         <Field label="Note" value={form.note} onChangeText={set('note')} placeholder="Terms for the customer" multiline />

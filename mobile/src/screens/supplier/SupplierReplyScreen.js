@@ -3,7 +3,8 @@ import {
   View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { api, uploadFile } from '../../api/client';
+import { Linking } from 'react-native';
+import { api, uploadFile, fileUrl } from '../../api/client';
 import { Button, Field, Card } from '../../components/ui';
 import { colors, spacing, radius } from '../../theme';
 
@@ -13,7 +14,10 @@ const UNITS = ['hrs', 'days', 'weeks'];
 // submit. Used for the initial quotation and for Final Quotation / Final PO
 // requests (the `stage` param decides which).
 export default function SupplierReplyScreen({ route, navigation }) {
-  const { orderId, stage, requirement, note: reqNote } = route.params;
+  const {
+    orderId, stage, requirement, note: reqNote,
+    category, subcategory, fieldDefs = [], poUrl,
+  } = route.params;
   const isFinal = stage === 'final_quotation' || stage === 'final_po';
   const title = stage === 'final_po' ? 'Send Final PO'
     : stage === 'final_quotation' ? 'Send Final Quotation' : 'Reply with quotation';
@@ -24,8 +28,11 @@ export default function SupplierReplyScreen({ route, navigation }) {
   const [duration, setDuration] = useState('');
   const [unit, setUnit] = useState('days');
   const [noteText, setNoteText] = useState('');
+  const [message, setMessage] = useState('');
+  const [details, setDetails] = useState({}); // category-specific answers
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const setDetail = (k) => (v) => setDetails((d) => ({ ...d, [k]: v }));
 
   const pick = async () => {
     try {
@@ -40,8 +47,9 @@ export default function SupplierReplyScreen({ route, navigation }) {
   };
 
   const submit = async () => {
-    if (!file && !duration) {
-      Alert.alert('Add details', 'Attach the quotation document and/or enter a duration.');
+    const hasDetails = Object.values(details).some((v) => v);
+    if (!file && !duration && !price && !hasDetails && !message) {
+      Alert.alert('Add details', 'Enter your quotation details (price/duration/fields), attach a document, or add a message.');
       return;
     }
     setSubmitting(true);
@@ -62,6 +70,8 @@ export default function SupplierReplyScreen({ route, navigation }) {
           duration: duration || undefined,
           duration_unit: unit,
           note: noteText || undefined,
+          message: message || undefined,
+          details: Object.keys(details).length ? details : undefined,
           document_url,
           stage: quoteStage,
         },
@@ -83,10 +93,34 @@ export default function SupplierReplyScreen({ route, navigation }) {
       <Text style={styles.h1}>{title}</Text>
 
       <Card>
+        {(category || subcategory) ? (
+          <Text style={styles.cat}>{[category, subcategory].filter(Boolean).join(' · ')}</Text>
+        ) : null}
         <Text style={styles.reqLabel}>Requirement</Text>
         <Text style={styles.reqText}>{requirement || '—'}</Text>
         {reqNote ? <Text style={styles.reqNote}>Note: {reqNote}</Text> : null}
+        {poUrl ? (
+          <TouchableOpacity onPress={() => Linking.openURL(fileUrl(poUrl))}>
+            <Text style={styles.poLink}>📄 View the PO attached by MMT</Text>
+          </TouchableOpacity>
+        ) : null}
       </Card>
+
+      {fieldDefs && fieldDefs.length ? (
+        <Card>
+          <Text style={styles.section}>{subcategory || category} details</Text>
+          {fieldDefs.map((f) => (
+            <Field
+              key={f.key || f.label}
+              label={f.label || f.key}
+              value={details[f.key || f.label] || ''}
+              onChangeText={setDetail(f.key || f.label)}
+              placeholder={f.placeholder || ''}
+              keyboardType={f.type === 'number' ? 'numeric' : 'default'}
+            />
+          ))}
+        </Card>
+      ) : null}
 
       <Card>
         <Text style={styles.section}>Quotation document {isFinal ? '(PO / final)' : '(PDF)'}</Text>
@@ -118,7 +152,8 @@ export default function SupplierReplyScreen({ route, navigation }) {
           </View>
         </View>
 
-        <Field label="Note (condition / policy / rules)" value={noteText} onChangeText={setNoteText} placeholder="Any conditions" multiline />
+        <Field label="Note (condition / policy / rules)" value={noteText} onChangeText={setNoteText} placeholder="Any conditions / mandatory terms for us" multiline />
+        <Field label="Message to MMT (optional)" value={message} onChangeText={setMessage} placeholder="Anything you'd like to add" multiline />
       </Card>
 
       <Button title={uploading ? 'Uploading…' : 'Submit response'} onPress={submit} loading={submitting} />
@@ -130,6 +165,8 @@ export default function SupplierReplyScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   oid: { fontSize: 13, fontWeight: '800', color: colors.primary },
   h1: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 2, marginBottom: spacing.md },
+  cat: { fontSize: 12, fontWeight: '700', color: colors.primary, marginBottom: 6 },
+  poLink: { color: colors.primary, fontWeight: '700', marginTop: spacing.sm },
   reqLabel: { fontSize: 12, color: colors.muted, fontWeight: '700' },
   reqText: { fontSize: 15, color: colors.text, marginTop: 2 },
   reqNote: { fontSize: 13, color: colors.muted, marginTop: 4, fontStyle: 'italic' },

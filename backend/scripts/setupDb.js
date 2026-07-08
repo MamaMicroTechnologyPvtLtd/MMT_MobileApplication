@@ -45,6 +45,10 @@ async function main() {
   // Supplier quotation dynamic answers.
   await pool.query("ALTER TABLE supplier_quotations ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'");
   await pool.query('ALTER TABLE supplier_quotations ADD COLUMN IF NOT EXISTS message TEXT');
+  // 'deferred' status (internal "get back later").
+  await pool.query('ALTER TABLE supplier_quotations DROP CONSTRAINT IF EXISTS supplier_quotations_status_check');
+  await pool.query(`ALTER TABLE supplier_quotations ADD CONSTRAINT supplier_quotations_status_check
+                    CHECK (status IN ('received','shortlisted','finalized','rejected','deferred'))`);
   // Internal PO attached when asking a supplier for the final quotation.
   await pool.query('ALTER TABLE order_suppliers ADD COLUMN IF NOT EXISTS po_url TEXT');
 

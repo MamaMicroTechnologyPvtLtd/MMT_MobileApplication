@@ -224,7 +224,9 @@ CREATE TABLE IF NOT EXISTS supplier_quotations (
   stage         TEXT NOT NULL DEFAULT 'quotation'
     CHECK (stage IN ('quotation', 'final_quotation', 'final_po', 'invoice')),
   status        TEXT NOT NULL DEFAULT 'received'
-    CHECK (status IN ('received', 'shortlisted', 'finalized', 'rejected')),
+    CHECK (status IN ('received', 'shortlisted', 'finalized', 'rejected', 'deferred')),
+  details       JSONB DEFAULT '{}',            -- category-specific answers
+  message       TEXT,                          -- free message from supplier
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

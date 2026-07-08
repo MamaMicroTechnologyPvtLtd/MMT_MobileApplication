@@ -5,6 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api, API_BASE_URL, getToken } from '../../api/client';
 import { Card, Badge, Button, EmptyState } from '../../components/ui';
+import UploadField from '../../components/UploadField';
 import { colors, spacing, radius, statusColor } from '../../theme';
 
 const money = (v) => (v == null ? '—' : `₹${Number(v).toLocaleString('en-IN')}`);
@@ -16,6 +17,7 @@ export default function OrderDetailScreen({ route, navigation }) {
   const [rows, setRows] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [poUrls, setPoUrls] = useState({}); // supplier_quotation id -> our PO url
 
   const load = useCallback(async () => {
     try {
@@ -140,11 +142,23 @@ export default function OrderDetailScreen({ route, navigation }) {
                 </View>
                 <Badge label={r.status} />
               </View>
+              {r.message ? <Text style={styles.supMsg}>“{r.message}”</Text> : null}
               <View style={styles.actBtns}>
+                <MiniBtn label="Get back later" onPress={() => act(r, { status: 'deferred' }, 'Marked to revisit')} busy={busyId === r.id} />
                 <MiniBtn label="Shortlist" onPress={() => act(r, { status: 'shortlisted' }, 'Shortlisted')} busy={busyId === r.id} />
-                <MiniBtn label="Ask Final Quote" onPress={() => act(r, { status: 'shortlisted', request_stage: 'final_quotation' }, 'Requested final quotation')} busy={busyId === r.id} />
                 <MiniBtn label="Ask Final PO" onPress={() => act(r, { status: 'shortlisted', request_stage: 'final_po' }, 'Requested final PO')} busy={busyId === r.id} />
               </View>
+
+              <View style={styles.poBox}>
+                <Text style={styles.poLabel}>Attach our PO, then ask for the final quotation</Text>
+                <UploadField label={null} kind="document" icon="📄" value={poUrls[r.id] || ''} onChange={(v) => setPoUrls((p) => ({ ...p, [r.id]: v }))} />
+                <MiniBtn
+                  label={poUrls[r.id] ? 'Ask Final Quotation (with PO)' : 'Ask Final Quotation'}
+                  onPress={() => act(r, { status: 'shortlisted', request_stage: 'final_quotation', po_url: poUrls[r.id] || undefined }, 'Requested final quotation')}
+                  busy={busyId === r.id}
+                />
+              </View>
+
               <Button
                 title="Use this quote → send to customer"
                 style={{ marginTop: spacing.sm }}
@@ -216,6 +230,9 @@ const styles = StyleSheet.create({
   actTop: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   actName: { fontSize: 15, fontWeight: '700', color: colors.text },
   actPrice: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  supMsg: { fontSize: 13, color: colors.text, fontStyle: 'italic', marginBottom: spacing.sm },
+  poBox: { marginTop: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
+  poLabel: { fontSize: 12, color: colors.muted, marginBottom: 6, fontWeight: '600' },
   actBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   mini: {
     borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill,

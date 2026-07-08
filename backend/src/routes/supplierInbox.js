@@ -21,9 +21,11 @@ router.get(
     if (!supplier_id) return res.status(400).json({ error: 'No supplier linked to this account' });
 
     const { rows } = await query(
-      `SELECT os.order_id, os.stage, os.status AS request_status, os.sent_at,
+      `SELECT os.order_id, os.stage, os.status AS request_status, os.sent_at, os.po_url,
               o.requirement, o.note, o.quantity, o.price_range, o.pincode,
-              o.status AS order_status,
+              o.category, o.subcategory, o.status AS order_status,
+              (SELECT sc.fields FROM subcategories sc JOIN categories c2 ON c2.id = sc.category_id
+                WHERE c2.name = o.category AND sc.name = o.subcategory LIMIT 1) AS field_defs,
               lq.id AS last_quote_id, lq.price AS last_price, lq.duration AS last_duration,
               lq.duration_unit AS last_duration_unit, lq.stage AS last_stage,
               lq.document_url AS last_document_url, lq.created_at AS last_quoted_at

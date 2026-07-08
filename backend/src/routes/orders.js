@@ -259,7 +259,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { rows } = await query(
       `SELECT sq.id, sq.supplier_id, sq.price, sq.quantity, sq.duration, sq.duration_unit,
-              sq.note, sq.document_url, sq.stage, sq.status, sq.created_at,
+              sq.note, sq.message, sq.details, sq.document_url, sq.stage, sq.status, sq.created_at,
               s.contact_person_name, s.supplier_firm_name, s.city AS location,
               s.current_gst_info AS gst, s.mobile AS phone, s.email AS mail
          FROM supplier_quotations sq
