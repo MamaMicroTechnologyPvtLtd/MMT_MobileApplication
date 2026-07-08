@@ -64,9 +64,14 @@ export default function DirectoryScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
-      <TouchableOpacity style={styles.catLink} onPress={() => navigation.navigate('ManageCategories')}>
-        <Text style={styles.catLinkText}>⚙ Manage categories &amp; sub-categories ›</Text>
-      </TouchableOpacity>
+      <View style={styles.linkRow}>
+        <TouchableOpacity onPress={() => navigation.navigate('ManageCategories')}>
+          <Text style={styles.catLinkText}>⚙ Categories ›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Staff')}>
+          <Text style={styles.catLinkText}>👥 Employees ›</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.searchRow}>
         <TextInput
@@ -107,7 +112,7 @@ const styles = StyleSheet.create({
   tabOn: { borderBottomColor: colors.primary },
   tabText: { fontSize: 15, fontWeight: '700', color: colors.muted },
   tabTextOn: { color: colors.primary },
-  catLink: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  linkRow: { flexDirection: 'row', gap: spacing.lg, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   catLinkText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   searchRow: { flexDirection: 'row', gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.sm, alignItems: 'center' },
   input: {
