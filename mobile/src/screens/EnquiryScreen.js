@@ -10,11 +10,14 @@ import { colors, spacing } from '../theme';
 // The Customer home: FIRST the form to send an enquiry to Internal, then the
 // customer's own recent enquiries with their status.
 export default function EnquiryScreen() {
-  const empty = { category: '', subject: '', message: '', quantity: '', unit: '', target_price: '', pincode: '', contact_phone: '' };
+  const empty = { subject: '', message: '', quantity: '', unit: '', target_price: '', pincode: '', contact_phone: '' };
   const [form, setForm] = useState(empty);
   const [projectMode, setProjectMode] = useState('new'); // 'new' | 'existing'
   const [projectId, setProjectId] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [category, setCategory] = useState(null); // { id, name, subcategories }
+  const [subcategory, setSubcategory] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,12 +26,14 @@ export default function EnquiryScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [enq, proj] = await Promise.all([
+      const [enq, proj, cats] = await Promise.all([
         api('/enquiries'),
         api('/projects/mine').catch(() => []),
+        api('/categories').catch(() => []),
       ]);
       setEnquiries(enq);
       setProjects(proj);
+      setCategories(cats);
     } catch (e) {
       // silently ignore on the home list; the form still works
     }
@@ -45,14 +50,25 @@ export default function EnquiryScreen() {
       Alert.alert('Select a project', 'Choose an existing project, or switch to "New project".');
       return;
     }
+    if (!category) {
+      Alert.alert('Select a category', 'Choose a category (and sub-category) for your enquiry.');
+      return;
+    }
     setSubmitting(true);
     try {
-      const body = { ...form, project_id: projectMode === 'existing' ? projectId : undefined };
+      const body = {
+        ...form,
+        category: category?.name,
+        subcategory: subcategory?.name,
+        project_id: projectMode === 'existing' ? projectId : undefined,
+      };
       const created = await api('/enquiries', { method: 'POST', body });
       Alert.alert('Enquiry sent', `Your enquiry ${created.enquiry_id} has been sent to the MMT team.`);
       setForm(empty);
       setProjectId(null);
       setProjectMode('new');
+      setCategory(null);
+      setSubcategory(null);
       load();
     } catch (e) {
       Alert.alert('Could not send', e.message);
@@ -107,7 +123,35 @@ export default function EnquiryScreen() {
           )
         ) : null}
 
-        <Field label="Category" value={form.category} onChangeText={set('category')} placeholder="e.g. Cement, Steel, Sanitary" />
+        <Text style={styles.label}>Category *</Text>
+        <View style={styles.projList}>
+          {categories.map((c) => (
+            <TouchableOpacity
+              key={c.id}
+              onPress={() => { setCategory(c); setSubcategory(null); }}
+              style={[styles.projChip, category?.id === c.id && styles.projChipOn]}
+            >
+              <Text style={[styles.projText, category?.id === c.id && styles.projTextOn]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {category && category.subcategories?.length ? (
+          <>
+            <Text style={styles.label}>Sub-category</Text>
+            <View style={styles.projList}>
+              {category.subcategories.map((s) => (
+                <TouchableOpacity
+                  key={s.id}
+                  onPress={() => setSubcategory(s)}
+                  style={[styles.projChip, subcategory?.id === s.id && styles.projChipOn]}
+                >
+                  <Text style={[styles.projText, subcategory?.id === s.id && styles.projTextOn]}>{s.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        ) : null}
+
         <Field label="Subject" value={form.subject} onChangeText={set('subject')} placeholder="Short title" />
         <Field label="Requirement *" value={form.message} onChangeText={set('message')} placeholder="Describe your requirement in detail" multiline />
         <View style={styles.two}>

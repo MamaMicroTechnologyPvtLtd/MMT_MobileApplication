@@ -110,12 +110,32 @@ CREATE TABLE IF NOT EXISTS suppliers (
 CREATE INDEX IF NOT EXISTS idx_suppliers_pincode ON suppliers (pincode);
 
 -- ---------------------------------------------------------------------------
+-- Category taxonomy: Category → Sub-category. Managed by Admin/Manager and used
+-- in the enquiry form. Sub-categories carry a `fields` list (JSON) that drives
+-- the supplier's category-specific quotation form.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS categories (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS subcategories (
+  id          SERIAL PRIMARY KEY,
+  category_id INTEGER NOT NULL REFERENCES categories (id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  fields      JSONB NOT NULL DEFAULT '[]',   -- [{ key, label, type }] for supplier form
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (category_id, name)
+);
+
+-- ---------------------------------------------------------------------------
 -- Enquiries: raised by the Customer interface, appear on top of Internal.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS enquiries (
   enquiry_id   TEXT PRIMARY KEY,             -- e.g. MH_91_Z1_2026_E1
   customer_id  TEXT NOT NULL REFERENCES customers (customer_id),
   category     TEXT,
+  subcategory  TEXT,
   subject      TEXT,
   message      TEXT NOT NULL,                -- requirement description
   quantity     TEXT,
@@ -154,6 +174,8 @@ CREATE TABLE IF NOT EXISTS orders (
   project_id   TEXT REFERENCES projects (project_id),
   customer_id  TEXT NOT NULL REFERENCES customers (customer_id),
   enquiry_id   TEXT REFERENCES enquiries (enquiry_id),
+  category     TEXT,
+  subcategory  TEXT,
   requirement  TEXT,                          -- requirement message sent to suppliers
   note         TEXT,                          -- rules / conditions / mandatory
   quantity     TEXT,

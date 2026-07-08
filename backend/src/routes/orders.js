@@ -28,7 +28,10 @@ router.post(
   authenticate,
   requireRole('internal'),
   asyncHandler(async (req, res) => {
-    const { customer_id, enquiry_id, requirement, note, quantity, price_range, pincode } = req.body;
+    const {
+      customer_id, enquiry_id, requirement, note, quantity, price_range, pincode,
+      category, subcategory,
+    } = req.body;
     let { project_id } = req.body;
     if (!customer_id) return res.status(400).json({ error: 'customer_id is required' });
 
@@ -42,13 +45,20 @@ router.post(
         );
       }
       const orderId = await nextOrderId(client);
+      // Inherit category/subcategory from the enquiry when not explicitly given.
+      let cat = category;
+      let subcat = subcategory;
+      if ((!cat || !subcat) && enquiry_id) {
+        const e = await client.query('SELECT category, subcategory FROM enquiries WHERE enquiry_id = $1', [enquiry_id]);
+        if (e.rows[0]) { cat = cat || e.rows[0].category; subcat = subcat || e.rows[0].subcategory; }
+      }
       const { rows } = await client.query(
         `INSERT INTO orders
-           (order_id, project_id, customer_id, enquiry_id, requirement, note,
+           (order_id, project_id, customer_id, enquiry_id, category, subcategory, requirement, note,
             quantity, price_range, pincode, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-        [orderId, project_id, customer_id, enquiry_id || null, requirement || null,
-         note || null, quantity || null, price_range || null, pincode || null, req.user.id]
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+        [orderId, project_id, customer_id, enquiry_id || null, cat || null, subcat || null,
+         requirement || null, note || null, quantity || null, price_range || null, pincode || null, req.user.id]
       );
       if (enquiry_id) {
         await client.query(

@@ -38,6 +38,41 @@ async function main() {
   await pool.query('ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS contact_phone TEXT');
   // Internal staff sub-role.
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_role TEXT');
+  // Category taxonomy on enquiries/orders.
+  await pool.query('ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS subcategory TEXT');
+  await pool.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS category TEXT');
+  await pool.query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS subcategory TEXT');
+  // Supplier quotation dynamic answers.
+  await pool.query("ALTER TABLE supplier_quotations ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'");
+  await pool.query('ALTER TABLE supplier_quotations ADD COLUMN IF NOT EXISTS message TEXT');
+  // Internal PO attached when asking a supplier for the final quotation.
+  await pool.query('ALTER TABLE order_suppliers ADD COLUMN IF NOT EXISTS po_url TEXT');
+
+  // Seed a default category taxonomy (idempotent).
+  const TAXONOMY = {
+    Cement: ['OPC 43 Grade', 'OPC 53 Grade', 'PPC', 'White Cement'],
+    'Steel (TMT)': ['Fe500', 'Fe550', 'Fe500D'],
+    Sanitary: ['Pipes & Fittings', 'Taps & Faucets', 'Closets & Basins'],
+    Electrical: ['Wires & Cables', 'Switches & Sockets', 'MCB & DB', 'Lights'],
+    Paints: ['Interior', 'Exterior', 'Primer & Putty'],
+    Aggregates: ['M-Sand', 'Jelly / Blue Metal', 'Gravel'],
+    'Bricks & Blocks': ['Solid Blocks', 'Hollow Blocks', 'Red Bricks'],
+  };
+  for (const [cat, subs] of Object.entries(TAXONOMY)) {
+    const { rows } = await pool.query(
+      `INSERT INTO categories (name) VALUES ($1)
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+      [cat]
+    );
+    const catId = rows[0].id;
+    for (const sub of subs) {
+      await pool.query(
+        `INSERT INTO subcategories (category_id, name) VALUES ($1, $2)
+         ON CONFLICT (category_id, name) DO NOTHING`,
+        [catId, sub]
+      );
+    }
+  }
   // Payment gateway fields + 'processing' status + manual-payment remark.
   await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_order_id TEXT');
   await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS remark TEXT');

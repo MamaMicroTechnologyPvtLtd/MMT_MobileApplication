@@ -20,7 +20,7 @@ router.post(
     if (!customer_id) return res.status(400).json({ error: 'No customer linked to this account' });
 
     const {
-      category, subject, message, quantity, unit, target_price, location, pincode,
+      category, subcategory, subject, message, quantity, unit, target_price, location, pincode,
       contact_phone, project_id,
     } = req.body;
     if (!message) return res.status(400).json({ error: 'message (requirement) is required' });
@@ -40,12 +40,11 @@ router.post(
       const enquiryId = await nextEnquiryId(client);
       const { rows } = await client.query(
         `INSERT INTO enquiries
-           (enquiry_id, customer_id, category, subject, message, quantity, unit, target_price,
+           (enquiry_id, customer_id, category, subcategory, subject, message, quantity, unit, target_price,
             location, pincode, contact_phone, project_id, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-                 $13)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
          RETURNING *`,
-        [enquiryId, customer_id, category || null, subject || null, message,
+        [enquiryId, customer_id, category || null, subcategory || null, subject || null, message,
          quantity || null, unit || null, target_price || null, location || null, pincode || null,
          contact_phone || null, project_id || null,
          project_id ? 'in_discussion' : 'new']
