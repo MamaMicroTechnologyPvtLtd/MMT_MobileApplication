@@ -10,8 +10,11 @@ import { colors, spacing } from '../theme';
 // The Customer home: FIRST the form to send an enquiry to Internal, then the
 // customer's own recent enquiries with their status.
 export default function EnquiryScreen() {
-  const empty = { category: '', subject: '', message: '', quantity: '', unit: '', target_price: '', pincode: '' };
+  const empty = { category: '', subject: '', message: '', quantity: '', unit: '', target_price: '', pincode: '', contact_phone: '' };
   const [form, setForm] = useState(empty);
+  const [projectMode, setProjectMode] = useState('new'); // 'new' | 'existing'
+  const [projectId, setProjectId] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -20,8 +23,12 @@ export default function EnquiryScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await api('/enquiries');
-      setEnquiries(data);
+      const [enq, proj] = await Promise.all([
+        api('/enquiries'),
+        api('/projects/mine').catch(() => []),
+      ]);
+      setEnquiries(enq);
+      setProjects(proj);
     } catch (e) {
       // silently ignore on the home list; the form still works
     }
@@ -34,11 +41,18 @@ export default function EnquiryScreen() {
       Alert.alert('Requirement needed', 'Please describe what you need in the requirement box.');
       return;
     }
+    if (projectMode === 'existing' && !projectId) {
+      Alert.alert('Select a project', 'Choose an existing project, or switch to "New project".');
+      return;
+    }
     setSubmitting(true);
     try {
-      const created = await api('/enquiries', { method: 'POST', body: form });
+      const body = { ...form, project_id: projectMode === 'existing' ? projectId : undefined };
+      const created = await api('/enquiries', { method: 'POST', body });
       Alert.alert('Enquiry sent', `Your enquiry ${created.enquiry_id} has been sent to the MMT team.`);
       setForm(empty);
+      setProjectId(null);
+      setProjectMode('new');
       load();
     } catch (e) {
       Alert.alert('Could not send', e.message);
@@ -58,6 +72,41 @@ export default function EnquiryScreen() {
       <Text style={styles.sub}>Tell us what you need. Our team will get back with a quotation.</Text>
 
       <Card>
+        <Text style={styles.label}>This enquiry is for</Text>
+        <View style={styles.seg}>
+          {['new', 'existing'].map((m) => (
+            <TouchableOpacity
+              key={m}
+              onPress={() => setProjectMode(m)}
+              style={[styles.segItem, projectMode === m && styles.segItemOn]}
+            >
+              <Text style={[styles.segText, projectMode === m && styles.segTextOn]}>
+                {m === 'new' ? 'A new project' : 'An existing project'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {projectMode === 'existing' ? (
+          projects.length === 0 ? (
+            <Text style={styles.hint}>No existing projects on your account. Choose &quot;A new project&quot;.</Text>
+          ) : (
+            <View style={styles.projList}>
+              {projects.map((p) => (
+                <TouchableOpacity
+                  key={p.project_id}
+                  onPress={() => setProjectId(p.project_id)}
+                  style={[styles.projChip, projectId === p.project_id && styles.projChipOn]}
+                >
+                  <Text style={[styles.projText, projectId === p.project_id && styles.projTextOn]}>
+                    #{p.project_id}{p.order_id ? ` · ${p.order_id}` : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )
+        ) : null}
+
         <Field label="Category" value={form.category} onChangeText={set('category')} placeholder="e.g. Cement, Steel, Sanitary" />
         <Field label="Subject" value={form.subject} onChangeText={set('subject')} placeholder="Short title" />
         <Field label="Requirement *" value={form.message} onChangeText={set('message')} placeholder="Describe your requirement in detail" multiline />
@@ -67,8 +116,9 @@ export default function EnquiryScreen() {
         </View>
         <View style={styles.two}>
           <View style={styles.half}><Field label="Target price" value={form.target_price} onChangeText={set('target_price')} placeholder="₹ / unit" /></View>
-          <View style={styles.half}><Field label="Pincode" value={form.pincode} onChangeText={set('pincode')} placeholder="Delivery pincode" keyboardType="numeric" /></View>
+          <View style={styles.half}><Field label="Project pincode" value={form.pincode} onChangeText={set('pincode')} placeholder="Site / delivery pincode" keyboardType="numeric" /></View>
         </View>
+        <Field label="Contact phone" value={form.contact_phone} onChangeText={set('contact_phone')} placeholder="Best number to reach you" keyboardType="phone-pad" />
         <Button title="Send enquiry" onPress={onSubmit} loading={submitting} />
       </Card>
 
@@ -101,6 +151,18 @@ const styles = StyleSheet.create({
   h2: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: spacing.md, marginBottom: spacing.sm },
   two: { flexDirection: 'row', gap: spacing.md },
   half: { flex: 1 },
+  label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
+  seg: { flexDirection: 'row', gap: 8, marginBottom: spacing.md },
+  segItem: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, alignItems: 'center' },
+  segItemOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  segText: { color: colors.muted, fontWeight: '700', fontSize: 13 },
+  segTextOn: { color: '#fff' },
+  hint: { color: colors.muted, fontSize: 13, marginBottom: spacing.md },
+  projList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md },
+  projChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg },
+  projChipOn: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  projText: { color: colors.text, fontWeight: '700', fontSize: 12 },
+  projTextOn: { color: colors.primaryDark },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   enqId: { fontSize: 13, fontWeight: '800', color: colors.primary },
   enqSubject: { fontSize: 15, fontWeight: '700', color: colors.text },

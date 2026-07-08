@@ -40,6 +40,26 @@ router.post(
 );
 
 /**
+ * GET /api/projects/mine  (Customer)
+ * The logged-in customer's existing projects (incl. those imported from the old
+ * software), so they can raise an enquiry against an existing project.
+ */
+router.get(
+  '/mine',
+  authenticate,
+  requireRole('customer'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `SELECT p.project_id, p.ward, p.created_at,
+              (SELECT o.order_id FROM orders o WHERE o.project_id = p.project_id ORDER BY o.created_at LIMIT 1) AS order_id
+         FROM projects p WHERE p.customer_id = $1 ORDER BY p.created_at DESC LIMIT 200`,
+      [req.user.customer_id]
+    );
+    return res.json(rows);
+  })
+);
+
+/**
  * GET /api/projects  (Internal)
  */
 router.get(

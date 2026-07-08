@@ -36,6 +36,7 @@ export default function EnquiriesScreen({ navigation }) {
         body: {
           customer_id: enq.customer_id,
           enquiry_id: enq.enquiry_id,
+          project_id: enq.project_id || undefined, // reuse existing project if the enquiry has one
           requirement: enq.message,
           quantity: enq.quantity ? `${enq.quantity} ${enq.unit || ''}`.trim() : undefined,
           pincode: enq.pincode || enq.customer_pincode,
@@ -66,7 +67,9 @@ export default function EnquiriesScreen({ navigation }) {
       {item.subject ? <Text style={styles.subject}>{item.subject}</Text> : null}
       <Text style={styles.msg} numberOfLines={3}>{item.message}</Text>
       <Text style={styles.meta}>
-        {[item.category, item.quantity && `${item.quantity} ${item.unit || ''}`.trim(),
+        {[item.project_id ? `Existing project #${item.project_id}` : 'New project',
+          item.contact_phone && `☎ ${item.contact_phone}`,
+          item.category, item.quantity && `${item.quantity} ${item.unit || ''}`.trim(),
           item.pincode || item.customer_pincode, fmt(item.created_at)].filter(Boolean).join('  •  ')}
       </Text>
       {item.status === 'new' || item.status === 'in_discussion' ? (

@@ -192,6 +192,59 @@ async function bumpCounter(name, atLeast) {
   );
 }
 
+async function importProjects(sql, customerSet) {
+  // Legacy customer_projects columns:
+  // id, customer_id, user_id, project_id, created_at, updated_at, ward
+  const rows = parseInsertTuples(sql, 'customer_projects');
+  const seen = new Set();
+  let imported = 0;
+  let maxNum = 0;
+  for (const r of rows) {
+    const customerId = r[1];
+    const projectId = r[3];
+    if (!projectId || !customerId) continue;
+    if (!customerSet.has(customerId)) continue; // FK: customer must exist
+    if (seen.has(projectId)) continue;
+    seen.add(projectId);
+    await pool.query(
+      `INSERT INTO projects (project_id, customer_id, ward, created_at)
+       VALUES ($1, $2, $3, $4) ON CONFLICT (project_id) DO NOTHING`,
+      [projectId, customerId, r[6] || null, cleanTimestamp(r[4])]
+    );
+    const n = Number(projectId);
+    if (Number.isFinite(n)) maxNum = Math.max(maxNum, n);
+    imported += 1;
+  }
+  return { imported, projectSet: seen, maxNum };
+}
+
+async function importOrders(sql, customerSet, projectSet) {
+  // Legacy customer_orders columns:
+  // id, user_id, customer_id, order_id, created_at, updated_at, project_id, ...
+  const rows = parseInsertTuples(sql, 'customer_orders');
+  const seen = new Set();
+  let imported = 0;
+  let maxSuffix = 0;
+  for (const r of rows) {
+    const customerId = r[2];
+    const orderId = r[3];
+    const projectId = r[6];
+    if (!orderId || !customerId) continue;
+    if (!customerSet.has(customerId)) continue;
+    if (seen.has(orderId)) continue;
+    seen.add(orderId);
+    await pool.query(
+      `INSERT INTO orders (order_id, customer_id, project_id, status, created_at)
+       VALUES ($1, $2, $3, 'completed', $4) ON CONFLICT (order_id) DO NOTHING`,
+      [orderId, customerId, projectSet.has(projectId) ? projectId : null, cleanTimestamp(r[4])]
+    );
+    const m = String(orderId).match(/_O(\d+)$/);
+    if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
+    imported += 1;
+  }
+  return { imported, maxSuffix };
+}
+
 async function main() {
   const customerPath = process.argv[2] || path.join(__dirname, '..', 'data', 'legacy', 'customer_db.sql');
   const supplierPath = process.argv[3] || path.join(__dirname, '..', 'data', 'legacy', 'suplier_db.sql');
@@ -209,6 +262,18 @@ async function main() {
   // Advance counters so new ids continue past the highest legacy value.
   await bumpCounter('customer', cust.maxSuffix);
   await bumpCounter('supplier', sup.maxSuffix);
+
+  // Import old projects & orders (so an enquiry can reference an existing project).
+  const custRows = await pool.query('SELECT customer_id FROM customers');
+  const customerSet = new Set(custRows.rows.map((x) => x.customer_id));
+  const proj = await importProjects(customerSql, customerSet);
+  // eslint-disable-next-line no-console
+  console.log(`✓ projects imported: ${proj.imported} (max numeric ${proj.maxNum})`);
+  const ord = await importOrders(customerSql, customerSet, proj.projectSet);
+  // eslint-disable-next-line no-console
+  console.log(`✓ orders imported: ${ord.imported} (max O-suffix ${ord.maxSuffix})`);
+  await bumpCounter('project', proj.maxNum);
+  await bumpCounter('order', ord.maxSuffix);
 
   // Invoice counter from any IN ids present in the customer dump.
   const invMatches = customerSql.match(/_IN(\d+)/g) || [];

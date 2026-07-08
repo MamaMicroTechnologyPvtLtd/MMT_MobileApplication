@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS enquiries (
   target_price TEXT,
   location     TEXT,
   pincode      TEXT,
+  contact_phone TEXT,
   status       TEXT NOT NULL DEFAULT 'new'   -- new | in_discussion | quoted | closed
     CHECK (status IN ('new', 'in_discussion', 'quoted', 'closed')),
   project_id   TEXT,                          -- set once Internal creates a project

@@ -19,18 +19,36 @@ router.post(
     const { customer_id } = req.user;
     if (!customer_id) return res.status(400).json({ error: 'No customer linked to this account' });
 
-    const { category, subject, message, quantity, unit, target_price, location, pincode } = req.body;
+    const {
+      category, subject, message, quantity, unit, target_price, location, pincode,
+      contact_phone, project_id,
+    } = req.body;
     if (!message) return res.status(400).json({ error: 'message (requirement) is required' });
+
+    // If an existing project is chosen, it must belong to this customer.
+    if (project_id) {
+      const p = await query(
+        'SELECT project_id FROM projects WHERE project_id = $1 AND customer_id = $2',
+        [project_id, customer_id]
+      );
+      if (p.rows.length === 0) {
+        return res.status(400).json({ error: 'Selected project not found for this customer' });
+      }
+    }
 
     const enquiry = await withTransaction(async (client) => {
       const enquiryId = await nextEnquiryId(client);
       const { rows } = await client.query(
         `INSERT INTO enquiries
-           (enquiry_id, customer_id, category, subject, message, quantity, unit, target_price, location, pincode)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           (enquiry_id, customer_id, category, subject, message, quantity, unit, target_price,
+            location, pincode, contact_phone, project_id, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+                 $13)
          RETURNING *`,
         [enquiryId, customer_id, category || null, subject || null, message,
-         quantity || null, unit || null, target_price || null, location || null, pincode || null]
+         quantity || null, unit || null, target_price || null, location || null, pincode || null,
+         contact_phone || null, project_id || null,
+         project_id ? 'in_discussion' : 'new']
       );
       // Notify internal team (broadcast row keyed to internal users at read time).
       await client.query(
