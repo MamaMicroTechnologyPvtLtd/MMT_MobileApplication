@@ -55,6 +55,23 @@ function requireRole(...roles) {
   };
 }
 
+/**
+ * Require an internal user, optionally with one of the given staff roles
+ * ('admin' | 'manager' | 'listing_engineer'). With no roles, any internal passes.
+ */
+function requireStaff(...staffRoles) {
+  return (req, res, next) => {
+    if (!req.user || req.user.role !== 'internal') {
+      return res.status(403).json({ error: 'Internal staff only' });
+    }
+    if (staffRoles.length && !staffRoles.includes(req.user.staff_role)) {
+      return res.status(403).json({ error: 'Not allowed for your staff role' });
+    }
+    return next();
+  };
+}
+
 module.exports = {
-  signToken, authenticate, authenticateFlexible, requireRole, JWT_SECRET, JWT_EXPIRES_IN,
+  signToken, authenticate, authenticateFlexible, requireRole, requireStaff,
+  JWT_SECRET, JWT_EXPIRES_IN,
 };

@@ -50,16 +50,18 @@ router.post(
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+    // New self-registered employees start as listing engineers; Admin promotes.
     const { rows } = await query(
-      `INSERT INTO users (role, email, password_hash, full_name, phone)
-       VALUES ('internal', $1, $2, $3, $4)
-       RETURNING id, role, email, full_name, phone, customer_id, supplier_id`,
+      `INSERT INTO users (role, email, password_hash, full_name, phone, staff_role)
+       VALUES ('internal', $1, $2, $3, $4, 'listing_engineer')
+       RETURNING id, role, email, full_name, phone, customer_id, supplier_id, staff_role`,
       [email, password_hash, full_name || null, phone || null]
     );
     const user = rows[0];
 
     const token = signToken({
-      id: user.id, role: user.role, customer_id: user.customer_id, supplier_id: user.supplier_id,
+      id: user.id, role: user.role, customer_id: user.customer_id,
+      supplier_id: user.supplier_id, staff_role: user.staff_role,
     });
     return res.status(201).json({ token, user });
   })
@@ -91,6 +93,7 @@ router.post(
       role: user.role,
       customer_id: user.customer_id,
       supplier_id: user.supplier_id,
+      staff_role: user.staff_role,
     });
     return res.json({
       token,
@@ -102,6 +105,7 @@ router.post(
         phone: user.phone,
         customer_id: user.customer_id,
         supplier_id: user.supplier_id,
+        staff_role: user.staff_role,
       },
     });
   })
@@ -115,7 +119,7 @@ router.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const { rows } = await query(
-      `SELECT id, role, email, full_name, phone, customer_id, supplier_id, created_at
+      `SELECT id, role, email, full_name, phone, customer_id, supplier_id, staff_role, created_at
        FROM users WHERE id = $1`,
       [req.user.id]
     );

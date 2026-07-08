@@ -36,6 +36,8 @@ async function main() {
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
   // Enquiry contact phone (for old/new project enquiries).
   await pool.query('ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS contact_phone TEXT');
+  // Internal staff sub-role.
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_role TEXT');
   // Payment gateway fields + 'processing' status + manual-payment remark.
   await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_order_id TEXT');
   await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS remark TEXT');

@@ -22,6 +22,8 @@ const supplierQuotations = require('./routes/supplierQuotations');
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/listings', require('./routes/listings'));
+app.use('/api/staff', require('./routes/staff'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/enquiries', require('./routes/enquiries'));

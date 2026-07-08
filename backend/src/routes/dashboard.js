@@ -1,7 +1,7 @@
 const express = require('express');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate, requireStaff } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -26,7 +26,7 @@ function tally(rows, keys) {
 router.get(
   '/',
   authenticate,
-  requireRole('internal'),
+  requireStaff('admin', 'manager'),
   asyncHandler(async (req, res) => {
     const [
       customers, suppliers, enquiryRows, orderRows, deliveryRows,

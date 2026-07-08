@@ -16,11 +16,13 @@ const EMPLOYEES = [
     email: `admin@${DOMAIN}`,
     full_name: 'MMT Admin',
     password: process.env.SEED_ADMIN_PASSWORD || 'Admin@MMT2026',
+    staff_role: 'admin',
   },
   {
     email: `manager@${DOMAIN}`,
     full_name: 'MMT Manager',
     password: process.env.SEED_MANAGER_PASSWORD || 'Manager@MMT2026',
+    staff_role: 'manager',
   },
 ];
 
@@ -35,9 +37,9 @@ async function main() {
     }
     const password_hash = await bcrypt.hash(emp.password, 10);
     await pool.query(
-      `INSERT INTO users (role, email, password_hash, full_name)
-       VALUES ('internal', $1, $2, $3)`,
-      [emp.email, password_hash, emp.full_name]
+      `INSERT INTO users (role, email, password_hash, full_name, staff_role)
+       VALUES ('internal', $1, $2, $3, $4)`,
+      [emp.email, password_hash, emp.full_name, emp.staff_role]
     );
     created.push(emp);
     // eslint-disable-next-line no-console
