@@ -29,10 +29,17 @@ const EMPLOYEES = [
 async function main() {
   const created = [];
   for (const emp of EMPLOYEES) {
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [emp.email]);
+    const existing = await pool.query('SELECT id, staff_role FROM users WHERE email = $1', [emp.email]);
     if (existing.rows.length > 0) {
-      // eslint-disable-next-line no-console
-      console.log(`• ${emp.email} — already exists, skipped`);
+      // Ensure the staff_role is set correctly on an existing account.
+      if (existing.rows[0].staff_role !== emp.staff_role) {
+        await pool.query('UPDATE users SET staff_role = $1, updated_at = now() WHERE email = $2', [emp.staff_role, emp.email]);
+        // eslint-disable-next-line no-console
+        console.log(`• ${emp.email} — exists, set staff_role='${emp.staff_role}' (re-login to apply)`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.log(`• ${emp.email} — already exists, skipped`);
+      }
       continue;
     }
     const password_hash = await bcrypt.hash(emp.password, 10);

@@ -33,6 +33,11 @@ import QuoteCustomerScreen from './src/screens/internal/QuoteCustomerScreen';
 import CreateDeliveryScreen from './src/screens/internal/CreateDeliveryScreen';
 import ManagePaymentsScreen from './src/screens/internal/ManagePaymentsScreen';
 import ManageDeliveryScreen from './src/screens/internal/ManageDeliveryScreen';
+import ListingsReviewScreen from './src/screens/internal/ListingsReviewScreen';
+
+// Listing Engineer
+import ListingFormScreen from './src/screens/listing/ListingFormScreen';
+import MyListingsScreen from './src/screens/listing/MyListingsScreen';
 import DirectoryScreen from './src/screens/internal/DirectoryScreen';
 import CustomerFormScreen from './src/screens/internal/CustomerFormScreen';
 import SupplierFormScreen from './src/screens/internal/SupplierFormScreen';
@@ -76,8 +81,28 @@ function InternalTabs({ navigation }) {
       <Tab.Screen name="Enquiries" component={InternalEnquiriesScreen} options={{ title: 'Enquiries', tabBarIcon: tabIcon('📥') }} />
       <Tab.Screen name="Orders" component={OrdersScreen} options={{ title: 'Orders', tabBarIcon: tabIcon('📦') }} />
       <Tab.Screen name="Directory" component={DirectoryScreen} options={{ title: 'Directory', tabBarIcon: tabIcon('📇') }} />
+      <Tab.Screen name="Listings" component={ListingsReviewScreen} options={{ title: 'Listings', tabBarIcon: tabIcon('📋') }} />
       <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'History', tabBarIcon: tabIcon('🕑') }} />
     </Tab.Navigator>
+  );
+}
+
+// --- Listing Engineer: restricted — only create listings + own day task -------
+function ListingEngineerTabs({ navigation }) {
+  return (
+    <Tab.Navigator screenOptions={baseTabScreenOptions(navigation)}>
+      <Tab.Screen name="NewListing" component={ListingFormScreen} options={{ title: 'New Listing', tabBarIcon: tabIcon('➕') }} />
+      <Tab.Screen name="Task" component={MyListingsScreen} options={{ title: 'My Task', tabBarIcon: tabIcon('🗒️') }} />
+    </Tab.Navigator>
+  );
+}
+
+function ListingEngineerStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="Home" component={ListingEngineerTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+    </Stack.Navigator>
   );
 }
 
@@ -149,7 +174,9 @@ function Root() {
   }
 
   if (!user) return <AuthStack />;
-  if (user.role === 'internal') return <InternalStack />;
+  if (user.role === 'internal') {
+    return user.staff_role === 'listing_engineer' ? <ListingEngineerStack /> : <InternalStack />;
+  }
   if (user.role === 'supplier') return <SupplierStack />;
   return <CustomerStack />;
 }
