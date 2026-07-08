@@ -30,8 +30,9 @@ async function main() {
   await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_video_url TEXT');
   // Expo push token per login.
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
-  // Payment gateway fields + 'processing' status.
+  // Payment gateway fields + 'processing' status + manual-payment remark.
   await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_order_id TEXT');
+  await pool.query('ALTER TABLE payments ADD COLUMN IF NOT EXISTS remark TEXT');
   await pool.query(`ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_status_check`);
   await pool.query(`ALTER TABLE payments ADD CONSTRAINT payments_status_check
                     CHECK (status IN ('pending', 'processing', 'paid', 'failed'))`);

@@ -162,6 +162,9 @@ export default function OrderDetailScreen({ route, navigation }) {
       ) : null}
 
       <View style={{ height: spacing.md }} />
+      <Button title="Manage payments" variant="ghost"
+        onPress={() => navigation.navigate('ManagePayments', { orderId, customerId: order.customer_id })} />
+      <View style={{ height: spacing.sm }} />
       <Button title="Create delivery for this order" variant="ghost"
         onPress={() => navigation.navigate('CreateDelivery', { orderId, customerId: order.customer_id, projectId: order.project_id })} />
       <View style={{ height: spacing.xl }} />
