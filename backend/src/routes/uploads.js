@@ -19,15 +19,16 @@ const storage = multer.diskStorage({
   },
 });
 
-// Accept PDFs, images and short videos (quotation PDFs, invoices, delivery
-// truck photos/videos).
+// Accept quotation/document files (PDF, Word, Excel, CSV, text), images, and
+// short videos (delivery truck photos/videos).
+const okMime = /(pdf|image\/|video\/|msword|wordprocessingml|ms-excel|spreadsheetml|csv|text\/plain)/i;
+const okExt = /\.(pdf|jpe?g|png|webp|gif|heic|mp4|mov|avi|webm|mkv|doc|docx|xls|xlsx|csv|txt)$/i;
 const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (videos)
   fileFilter: (req, file, cb) => {
-    const ok = /pdf|jpe?g|png|webp|mp4|quicktime|x-msvideo|webm/i.test(file.mimetype)
-      || /\.(pdf|jpe?g|png|webp|mp4|mov|avi|webm)$/i.test(file.originalname);
-    cb(ok ? null : new Error('Only PDF, image or video files are allowed'), ok);
+    const ok = okMime.test(file.mimetype || '') || okExt.test(file.originalname || '');
+    cb(ok ? null : new Error('Unsupported file type. Upload a PDF, Office document, image, or video.'), ok);
   },
 });
 
