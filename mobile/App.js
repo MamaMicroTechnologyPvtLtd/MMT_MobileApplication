@@ -32,6 +32,7 @@ import SendRequirementScreen from './src/screens/internal/SendRequirementScreen'
 import QuoteCustomerScreen from './src/screens/internal/QuoteCustomerScreen';
 import CreateDeliveryScreen from './src/screens/internal/CreateDeliveryScreen';
 import ManagePaymentsScreen from './src/screens/internal/ManagePaymentsScreen';
+import ManageDeliveryScreen from './src/screens/internal/ManageDeliveryScreen';
 import DirectoryScreen from './src/screens/internal/DirectoryScreen';
 import CustomerFormScreen from './src/screens/internal/CustomerFormScreen';
 import SupplierFormScreen from './src/screens/internal/SupplierFormScreen';
@@ -107,6 +108,7 @@ function InternalStack() {
       <Stack.Screen name="QuoteCustomer" component={QuoteCustomerScreen} options={{ title: 'Quote Customer' }} />
       <Stack.Screen name="CreateDelivery" component={CreateDeliveryScreen} options={{ title: 'Create Delivery' }} />
       <Stack.Screen name="ManagePayments" component={ManagePaymentsScreen} options={{ title: 'Payments' }} />
+      <Stack.Screen name="ManageDelivery" component={ManageDeliveryScreen} options={{ title: 'Manage Delivery' }} />
       <Stack.Screen name="Directory" component={DirectoryScreen} options={{ title: 'Directory' }} />
       <Stack.Screen name="CustomerForm" component={CustomerFormScreen} options={{ title: 'Customer' }} />
       <Stack.Screen name="SupplierForm" component={SupplierFormScreen} options={{ title: 'Supplier' }} />

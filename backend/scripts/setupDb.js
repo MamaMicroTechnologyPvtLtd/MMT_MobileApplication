@@ -25,9 +25,13 @@ async function main() {
   await pool.query('ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT');
   // email is optional now (customers/suppliers log in by ID, not email).
   await pool.query('ALTER TABLE users ALTER COLUMN email DROP NOT NULL');
-  // delivery media (truck photo/video).
+  // delivery media (truck photo/video + timestamped on-load / onsite photos).
   await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_image_url TEXT');
   await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS truck_video_url TEXT');
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS onload_photo_url TEXT');
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS onload_photo_at TIMESTAMPTZ');
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS onsite_photo_url TEXT');
+  await pool.query('ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS onsite_photo_at TIMESTAMPTZ');
   // Expo push token per login.
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
   // Enquiry contact phone (for old/new project enquiries).

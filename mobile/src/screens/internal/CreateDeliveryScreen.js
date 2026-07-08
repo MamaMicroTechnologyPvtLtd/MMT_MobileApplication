@@ -13,7 +13,7 @@ export default function CreateDeliveryScreen({ route, navigation }) {
     invoice_no: '', vehicle_number: '', driver_name: '', driver_number: '',
     delivery_location: '', postal_code: '', remark: '',
     invoice_url: '', po_url: '', bill_url: '', eway_bill_url: '',
-    truck_image_url: '', truck_video_url: '',
+    onload_photo_url: '', truck_video_url: '',
   });
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const [saving, setSaving] = useState(false);
@@ -23,10 +23,16 @@ export default function CreateDeliveryScreen({ route, navigation }) {
     try {
       const d = await api('/deliveries', {
         method: 'POST',
-        body: { order_id: orderId, customer_id: customerId, project_id: projectId, ...form },
+        body: {
+          order_id: orderId,
+          customer_id: customerId,
+          project_id: projectId,
+          onload_photo_at: form.onload_photo_url ? new Date().toISOString() : undefined,
+          ...form,
+        },
       });
-      Alert.alert('Delivery created', `${d.delivery_id} created for order ${orderId}.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert('Delivery created', `${d.delivery_id} created. Continue to update status & onsite photo.`, [
+        { text: 'Manage delivery', onPress: () => navigation.replace('ManageDelivery', { deliveryId: d.delivery_id }) },
       ]);
     } catch (e) {
       Alert.alert('Could not create', e.message);
@@ -54,10 +60,11 @@ export default function CreateDeliveryScreen({ route, navigation }) {
         <Field label="Remark" value={form.remark} onChangeText={set('remark')} placeholder="Any note" multiline />
       </Card>
 
-      <Text style={styles.h2}>Truck photo &amp; video</Text>
+      <Text style={styles.h2}>On-load capture (our side)</Text>
       <Card>
-        <UploadField label="Truck photo" kind="image" icon="📷" value={form.truck_image_url} onChange={set('truck_image_url')} />
-        <UploadField label="Truck video" kind="video" icon="🎥" value={form.truck_video_url} onChange={set('truck_video_url')} />
+        <Text style={styles.note}>The date &amp; time is captured automatically when you attach the on-load photo.</Text>
+        <UploadField label="On-load photo" kind="image" icon="📷" value={form.onload_photo_url} onChange={set('onload_photo_url')} />
+        <UploadField label="Loading video (optional)" kind="video" icon="🎥" value={form.truck_video_url} onChange={set('truck_video_url')} />
       </Card>
 
       <Text style={styles.h2}>Documents</Text>
@@ -80,4 +87,5 @@ const styles = StyleSheet.create({
   h2: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
   two: { flexDirection: 'row', gap: spacing.md },
   half: { flex: 1 },
+  note: { fontSize: 12, color: colors.muted, marginBottom: spacing.sm },
 });

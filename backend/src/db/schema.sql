@@ -249,6 +249,10 @@ CREATE TABLE IF NOT EXISTS deliveries (
   eway_bill_url   TEXT,
   truck_image_url TEXT,
   truck_video_url TEXT,
+  onload_photo_url TEXT,           -- photo captured while loading (our side)
+  onload_photo_at  TIMESTAMPTZ,    -- date/time captured with the on-load photo
+  onsite_photo_url TEXT,           -- photo captured at the delivery site
+  onsite_photo_at  TIMESTAMPTZ,    -- date/time captured with the onsite photo
   vehicle_number  TEXT,
   driver_name     TEXT,
   driver_number   TEXT,
