@@ -35,6 +35,7 @@ import ManagePaymentsScreen from './src/screens/internal/ManagePaymentsScreen';
 import ManageDeliveryScreen from './src/screens/internal/ManageDeliveryScreen';
 import ListingsReviewScreen from './src/screens/internal/ListingsReviewScreen';
 import ManageCategoriesScreen from './src/screens/internal/ManageCategoriesScreen';
+import SubcategoryFieldsScreen from './src/screens/internal/SubcategoryFieldsScreen';
 
 // Listing Engineer
 import ListingFormScreen from './src/screens/listing/ListingFormScreen';
@@ -139,6 +140,7 @@ function InternalStack() {
       <Stack.Screen name="CustomerForm" component={CustomerFormScreen} options={{ title: 'Customer' }} />
       <Stack.Screen name="SupplierForm" component={SupplierFormScreen} options={{ title: 'Supplier' }} />
       <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} options={{ title: 'Categories' }} />
+      <Stack.Screen name="SubcategoryFields" component={SubcategoryFieldsScreen} options={{ title: 'Fields' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
     </Stack.Navigator>
   );

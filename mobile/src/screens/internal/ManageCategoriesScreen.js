@@ -9,7 +9,7 @@ import { colors, spacing, radius } from '../../theme';
 
 // Admin/Manager: manage the Category → Sub-category taxonomy used in enquiries
 // and the supplier form. Additions are saved permanently.
-export default function ManageCategoriesScreen() {
+export default function ManageCategoriesScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [newCat, setNewCat] = useState('');
@@ -70,9 +70,14 @@ export default function ManageCategoriesScreen() {
           <Text style={styles.catName}>{c.name}</Text>
           <View style={styles.chips}>
             {(c.subcategories || []).map((s) => (
-              <TouchableOpacity key={s.id} style={styles.chip} onLongPress={() => removeSub(s.id)}>
+              <TouchableOpacity
+                key={s.id}
+                style={styles.chip}
+                onPress={() => navigation.navigate('SubcategoryFields', { subId: s.id, name: s.name, fields: s.fields })}
+                onLongPress={() => removeSub(s.id)}
+              >
                 <Text style={styles.chipText}>{s.name}</Text>
-                <Text style={styles.chipX}>  ✕</Text>
+                {Array.isArray(s.fields) && s.fields.length ? <Text style={styles.chipCount}>  ·{s.fields.length}f</Text> : null}
               </TouchableOpacity>
             ))}
             {(c.subcategories || []).length === 0 ? <Text style={styles.muted}>No sub-categories yet.</Text> : null}
@@ -105,7 +110,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: spacing.sm },
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
   chipText: { color: colors.primaryDark, fontWeight: '700', fontSize: 12 },
-  chipX: { color: colors.primaryDark, fontSize: 11 },
+  chipCount: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   muted: { color: colors.muted, fontSize: 13 },
   hint: { color: colors.muted, fontSize: 12, marginTop: spacing.md },
 });
