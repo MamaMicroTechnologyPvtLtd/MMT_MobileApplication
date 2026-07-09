@@ -333,8 +333,14 @@ async function main() {
   await pool.end();
 }
 
-main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
-  process.exit(1);
-});
+// Reusable pieces for the lighter "refresh details" script.
+module.exports = { parseInsertTuples, importCustomerGst, importCustomerNumbers };
+
+// Only run the full import when invoked directly (not when required).
+if (require.main === module) {
+  main().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    process.exit(1);
+  });
+}
