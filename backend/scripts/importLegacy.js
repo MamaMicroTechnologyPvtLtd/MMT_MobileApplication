@@ -245,6 +245,45 @@ async function importOrders(sql, customerSet, projectSet) {
   return { imported, maxSuffix };
 }
 
+// gst_tables: id, gst_number, state, created_at, updated_at, deleted_at, customer_id.
+// Fold each customer's GST into their customer record (fills customer_gst when
+// the customer_details row had none).
+async function importCustomerGst(sql, customerSet) {
+  const rows = parseInsertTuples(sql, 'gst_tables');
+  let updated = 0;
+  for (const r of rows) {
+    const gst = r[1];
+    const customerId = r[6];
+    if (!gst || !customerId || !customerSet.has(customerId)) continue;
+    const res = await pool.query(
+      `UPDATE customers SET customer_gst = $1, updated_at = now()
+        WHERE customer_id = $2 AND (customer_gst IS NULL OR customer_gst = '')`,
+      [gst, customerId]
+    );
+    updated += res.rowCount;
+  }
+  return { updated };
+}
+
+// customer_other_numbers: id, number, customer_id, created_at, updated_at.
+// Fold an extra contact number into alt_mobile when the customer has none.
+async function importCustomerNumbers(sql, customerSet) {
+  const rows = parseInsertTuples(sql, 'customer_other_numbers');
+  let updated = 0;
+  for (const r of rows) {
+    const number = r[1];
+    const customerId = r[2];
+    if (!number || !customerId || !customerSet.has(customerId)) continue;
+    const res = await pool.query(
+      `UPDATE customers SET alt_mobile = $1, updated_at = now()
+        WHERE customer_id = $2 AND (alt_mobile IS NULL OR alt_mobile = '')`,
+      [number, customerId]
+    );
+    updated += res.rowCount;
+  }
+  return { updated };
+}
+
 async function main() {
   const customerPath = process.argv[2] || path.join(__dirname, '..', 'data', 'legacy', 'customer_db.sql');
   const supplierPath = process.argv[3] || path.join(__dirname, '..', 'data', 'legacy', 'suplier_db.sql');
@@ -266,6 +305,13 @@ async function main() {
   // Import old projects & orders (so an enquiry can reference an existing project).
   const custRows = await pool.query('SELECT customer_id FROM customers');
   const customerSet = new Set(custRows.rows.map((x) => x.customer_id));
+
+  // Fold in extra customer detail kept in side tables (GST, other numbers).
+  const gst = await importCustomerGst(customerSql, customerSet);
+  const nums = await importCustomerNumbers(customerSql, customerSet);
+  // eslint-disable-next-line no-console
+  console.log(`✓ customer GST folded in: ${gst.updated}; extra numbers: ${nums.updated}`);
+
   const proj = await importProjects(customerSql, customerSet);
   // eslint-disable-next-line no-console
   console.log(`✓ projects imported: ${proj.imported} (max numeric ${proj.maxNum})`);
