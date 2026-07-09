@@ -3,7 +3,7 @@ const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { nextDeliveryId } = require('../utils/idGenerator');
-const { pushCustomer } = require('../utils/notify');
+const { pushCustomer, pushSupplier } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -59,6 +59,17 @@ router.post(
          vehicle_number ? `Vehicle ${vehicle_number}` : 'Your order is being prepared for delivery.',
          JSON.stringify({ delivery_id: deliveryId, order_id })]
       );
+      // Also record it for the supplier so it shows in their delivered-orders
+      // history + alerts (order is now confirmed & moving).
+      if (supplier_id) {
+        await client.query(
+          `INSERT INTO notifications (supplier_id, type, title, body, data)
+           VALUES ($1, 'delivery', $2, $3, $4)`,
+          [supplier_id, `Order confirmed · Delivery ${deliveryId}`,
+           'The order is confirmed and a delivery has been created.',
+           JSON.stringify({ delivery_id: deliveryId, order_id })]
+        );
+      }
       return rows[0];
     });
     pushCustomer(customer_id, {
@@ -66,6 +77,13 @@ router.post(
       body: vehicle_number ? `Vehicle ${vehicle_number}` : 'Your order is being prepared for delivery.',
       data: { type: 'delivery', delivery_id: delivery.delivery_id, order_id },
     }).catch(() => {});
+    if (supplier_id) {
+      pushSupplier(supplier_id, {
+        title: `Order confirmed · Delivery ${delivery.delivery_id}`,
+        body: 'A delivery has been created for your confirmed order.',
+        data: { type: 'delivery', delivery_id: delivery.delivery_id, order_id },
+      }).catch(() => {});
+    }
     return res.status(201).json(delivery);
   })
 );

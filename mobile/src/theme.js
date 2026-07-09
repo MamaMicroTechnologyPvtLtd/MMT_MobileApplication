@@ -35,6 +35,15 @@ export const statusColor = (status) => {
   return map[status] || colors.muted;
 };
 
+// Date-only and date+time formatters (used across all interfaces so lists always
+// show the full date with year, and — where it matters — the capture time too).
+export const fmtDate = (d) =>
+  (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+export const fmtDateTime = (d) =>
+  (d ? new Date(d).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }) : '');
+
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
 
 export const radius = { sm: 8, md: 12, lg: 16, pill: 999 };

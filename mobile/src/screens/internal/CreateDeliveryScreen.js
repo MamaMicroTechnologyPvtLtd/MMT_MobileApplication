@@ -8,7 +8,7 @@ import { colors, spacing } from '../../theme';
 // Delivery is generated after advance payment: a Delivery ID + the order/PO/
 // invoice references, a truck photo/video, and the vehicle + driver details.
 export default function CreateDeliveryScreen({ route, navigation }) {
-  const { orderId, customerId, projectId } = route.params || {};
+  const { orderId, customerId, projectId, supplierId } = route.params || {};
   const [form, setForm] = useState({
     invoice_no: '', vehicle_number: '', driver_name: '', driver_number: '',
     delivery_location: '', postal_code: '', remark: '',
@@ -27,6 +27,7 @@ export default function CreateDeliveryScreen({ route, navigation }) {
           order_id: orderId,
           customer_id: customerId,
           project_id: projectId,
+          supplier_id: supplierId,
           onload_photo_at: form.onload_photo_url ? new Date().toISOString() : undefined,
           ...form,
         },

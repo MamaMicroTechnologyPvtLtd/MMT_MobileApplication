@@ -1,5 +1,5 @@
 import React, { useState, useLayoutEffect, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
 import { api } from '../../api/client';
 import { Button, Field, Card } from '../../components/ui';
 import CredentialsCard from '../../components/CredentialsCard';
@@ -98,6 +98,22 @@ export default function CustomerFormScreen({ route, navigation }) {
       {isEdit ? <Text style={styles.id}>{existing.customer_id}</Text> : (
         <Text style={styles.note}>A new customer ID will be assigned automatically, continuing the series. A login (ID + password) is created for the customer.</Text>
       )}
+      {isEdit && existing.legacy_id && !existing.email && !existing.address ? (
+        <View style={styles.legacyBanner}>
+          <Text style={styles.legacyText}>
+            This is an old record — the previous software only stored the name & mobile.
+            Please complete the address, email, GST and other details below.
+          </Text>
+          {existing.latitude && existing.longitude ? (
+            <Text
+              style={styles.mapLink}
+              onPress={() => Linking.openURL(`https://maps.google.com/?q=${existing.latitude},${existing.longitude}`)}
+            >
+              📍 Open saved location on map
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       <Card>
         {FIELDS.map(([k, label, kb]) => (
           <Field key={k} label={label} value={form[k]} onChangeText={set(k)} keyboardType={kb} autoCapitalize={k === 'email' ? 'none' : 'sentences'} />
@@ -155,4 +171,7 @@ const styles = StyleSheet.create({
   h2: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
   successTitle: { fontSize: 20, fontWeight: '800', color: colors.success, marginBottom: spacing.sm },
   loginStatus: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  legacyBanner: { backgroundColor: `${colors.warning}18`, borderWidth: 1, borderColor: colors.warning, borderRadius: 12, padding: spacing.md, marginBottom: spacing.md },
+  legacyText: { fontSize: 13, color: colors.text, lineHeight: 18 },
+  mapLink: { fontSize: 13, color: colors.primary, fontWeight: '800', marginTop: spacing.sm },
 });

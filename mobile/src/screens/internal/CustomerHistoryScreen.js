@@ -5,9 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../api/client';
 import { Card, Badge, EmptyState } from '../../components/ui';
-import { colors, spacing, radius } from '../../theme';
-
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+import { colors, spacing, radius, fmtDateTime as fmt } from '../../theme';
 
 // Internal: the full project + order history for one customer, including
 // everything imported from the old software (2018 onwards).
@@ -67,6 +65,7 @@ export default function CustomerHistoryScreen({ route, navigation }) {
         ))}
       </View>
       <FlatList
+        style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}
         data={items}
         keyExtractor={(x) => x.project_id || x.order_id}

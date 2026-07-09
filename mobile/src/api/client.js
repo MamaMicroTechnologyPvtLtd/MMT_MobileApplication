@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -23,6 +23,30 @@ export async function setToken(token) {
 
 export async function getToken() {
   return AsyncStorage.getItem(TOKEN_KEY);
+}
+
+/**
+ * Open/download a server file (e.g. an .xlsx export). Pass an API-relative path
+ * like "/listings/export.xlsx?date=..."; the bearer token is appended as ?token
+ * so the flexible-auth routes accept it. On web we click a hidden <a> (survives
+ * the async gap without being blocked as a popup); on native we use Linking.
+ */
+export async function openDownload(path) {
+  const token = await getToken();
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `${API_BASE_URL}${path}${token ? `${sep}token=${encodeURIComponent(token)}` : ''}`;
+  if (Platform.OS === 'web' && typeof document !== 'undefined') {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  }
+  return Linking.openURL(url);
 }
 
 /**

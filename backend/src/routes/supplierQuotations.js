@@ -113,6 +113,22 @@ actionRouter.patch(
         throw e;
       }
       const row = q.rows[0];
+      // Plain shortlist (no document request): tell the supplier they are
+      // shortlisted — this is NOT an order confirmation and creates no delivery.
+      if (status === 'shortlisted' && !request_stage) {
+        await client.query(
+          `UPDATE order_suppliers SET status = 'shortlisted'
+            WHERE order_id = $1 AND supplier_id = $2`,
+          [row.order_id, row.supplier_id]
+        );
+        await client.query(
+          `INSERT INTO notifications (supplier_id, type, title, body, data)
+           VALUES ($1, 'general', $2, $3, $4)`,
+          [row.supplier_id, `Shortlisted · ${row.order_id}`,
+           'Your quotation has been shortlisted (not yet confirmed). We may ask for a final quotation next.',
+           JSON.stringify({ order_id: row.order_id, shortlisted: true })]
+        );
+      }
       if (request_stage) {
         // ask this supplier for the next document, attaching our PO if provided
         await client.query(
@@ -136,6 +152,12 @@ actionRouter.patch(
         title: `Please send ${request_stage.replace('_', ' ')} · ${updated.order_id}`,
         body: po_url ? 'A PO has been attached.' : 'The MMT team shortlisted your quotation.',
         data: { type: 'order', order_id: updated.order_id, stage: request_stage },
+      }).catch(() => {});
+    } else if (status === 'shortlisted') {
+      pushSupplier(updated.supplier_id, {
+        title: `Shortlisted · ${updated.order_id}`,
+        body: 'Your quotation has been shortlisted (not yet confirmed).',
+        data: { type: 'general', order_id: updated.order_id },
       }).catch(() => {});
     }
     return res.json(updated);

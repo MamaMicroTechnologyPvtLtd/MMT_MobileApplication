@@ -5,10 +5,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../api/client';
 import { Card, Badge } from '../../components/ui';
-import { colors, spacing, radius } from '../../theme';
+import { colors, spacing, radius, fmtDateTime as fmt } from '../../theme';
 
 const money = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 export default function DashboardScreen({ navigation }) {
   const [data, setData] = useState(null);
@@ -68,6 +67,30 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.rtitle}>{[e.first_name, e.last_name].filter(Boolean).join(' ') || '—'}</Text>
           <Text style={styles.rbody} numberOfLines={1}>{e.subject || e.category || ''}</Text>
           <Text style={styles.rmeta}>{fmt(e.created_at)}</Text>
+        </Card>
+      ))}
+
+      <View style={styles.h2Row}>
+        <Text style={styles.h2}>Recent listings</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Listings')}>
+          <Text style={styles.seeAll}>Open Listings ›</Text>
+        </TouchableOpacity>
+      </View>
+      {(!data.recent_listings || data.recent_listings.length === 0) ? <Text style={styles.empty}>None yet.</Text> : data.recent_listings.map((l) => (
+        <Card key={l.id}>
+          <View style={styles.rowTop}>
+            <Text style={styles.rtitle}>{l.project_name || l.customer_name || 'Listing'}</Text>
+            <Badge label={l.status} />
+          </View>
+          <Text style={styles.rbody}>
+            {[l.customer_name, l.phone && `☎ ${l.phone}`, l.location, l.pincode].filter(Boolean).join(' · ') || 'No contact details'}
+          </Text>
+          {l.materials && l.materials.length ? (
+            <Text style={styles.rbody} numberOfLines={2}>
+              {l.materials.map((m) => [m.material, m.quantity, m.unit].filter(Boolean).join(' ')).join(', ')}
+            </Text>
+          ) : null}
+          <Text style={styles.rmeta}>👷 {l.engineer_full_name || 'Engineer'} · {fmt(l.created_at)}</Text>
         </Card>
       ))}
 
@@ -139,6 +162,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   h1: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: spacing.md },
   h2: { fontSize: 16, fontWeight: '800', color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
+  h2Row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.sm },
+  seeAll: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   tile: {
     width: '47%', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1,

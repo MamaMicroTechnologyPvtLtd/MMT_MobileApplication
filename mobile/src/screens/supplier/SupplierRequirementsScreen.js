@@ -5,9 +5,8 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../api/client';
 import { Card, Badge, Button, EmptyState } from '../../components/ui';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, fmtDateTime as fmt } from '../../theme';
 
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '');
 const money = (v) => (v == null ? '—' : `₹${Number(v).toLocaleString('en-IN')}`);
 
 const stageLabel = {
@@ -32,9 +31,30 @@ export default function SupplierRequirementsScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const confirmOrder = (orderId) => {
+    Alert.alert(
+      'Accept & confirm order',
+      'Confirm you accept the final quotation/PO for this order? The MMT team will then create the delivery.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              await api(`/supplier/requirements/${orderId}/confirm`, { method: 'PATCH', body: {} });
+              Alert.alert('Order confirmed', 'The MMT team has been notified.');
+              await load();
+            } catch (e) { Alert.alert('Could not confirm', e.message); }
+          },
+        },
+      ]
+    );
+  };
+
   const renderItem = ({ item }) => {
     const isFinal = item.stage === 'final_quotation' || item.stage === 'final_po';
     const responded = item.last_quote_id != null && item.last_stage === (item.stage === 'requirement' ? 'quotation' : item.stage);
+    const confirmed = item.request_status === 'confirmed';
     return (
       <Card style={isFinal ? styles.finalCard : null}>
         <View style={styles.top}>
@@ -59,22 +79,36 @@ export default function SupplierRequirementsScreen({ navigation }) {
           </Text>
         ) : null}
 
-        <Button
-          title={isFinal ? `Send ${item.stage === 'final_po' ? 'Final PO' : 'Final Quotation'}`
-            : (responded ? 'Update quotation' : 'Reply with quotation')}
-          variant={isFinal ? 'primary' : (responded ? 'ghost' : 'primary')}
-          style={{ marginTop: spacing.md }}
-          onPress={() => navigation.navigate('SupplierReply', {
-            orderId: item.order_id,
-            stage: item.stage,
-            requirement: item.requirement,
-            note: item.note,
-            category: item.category,
-            subcategory: item.subcategory,
-            fieldDefs: item.field_defs || [],
-            poUrl: item.po_url,
-          })}
-        />
+        {confirmed ? (
+          <Text style={styles.confirmed}>✓ Order confirmed — awaiting delivery from MMT.</Text>
+        ) : (
+          <>
+            <Button
+              title={isFinal ? `Send ${item.stage === 'final_po' ? 'Final PO' : 'Final Quotation'}`
+                : (responded ? 'Update quotation' : 'Reply with quotation')}
+              variant={isFinal ? 'primary' : (responded ? 'ghost' : 'primary')}
+              style={{ marginTop: spacing.md }}
+              onPress={() => navigation.navigate('SupplierReply', {
+                orderId: item.order_id,
+                stage: item.stage,
+                requirement: item.requirement,
+                note: item.note,
+                category: item.category,
+                subcategory: item.subcategory,
+                fieldDefs: item.field_defs || [],
+                poUrl: item.po_url,
+              })}
+            />
+            {isFinal && item.last_quote_id ? (
+              <Button
+                title="Accept & confirm order"
+                variant="ghost"
+                style={{ marginTop: spacing.sm }}
+                onPress={() => confirmOrder(item.order_id)}
+              />
+            ) : null}
+          </>
+        )}
       </Card>
     );
   };
@@ -104,4 +138,5 @@ const styles = StyleSheet.create({
   note: { fontSize: 13, color: colors.muted, marginTop: 2, fontStyle: 'italic' },
   meta: { fontSize: 12, color: colors.muted, marginTop: 6 },
   prev: { fontSize: 13, color: colors.success, fontWeight: '700', marginTop: 6 },
+  confirmed: { fontSize: 14, color: colors.success, fontWeight: '800', marginTop: spacing.md },
 });

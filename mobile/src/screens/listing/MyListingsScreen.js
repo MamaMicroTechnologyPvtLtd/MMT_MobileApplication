@@ -3,11 +3,10 @@ import {
   View, Text, StyleSheet, FlatList, RefreshControl, Alert, TouchableOpacity, Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { api, API_BASE_URL, getToken } from '../../api/client';
+import { api, openDownload } from '../../api/client';
 import { Card, Badge, Button, EmptyState } from '../../components/ui';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, fmtDate as fmt, fmtDateTime } from '../../theme';
 
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '');
 const today = () => new Date().toISOString().slice(0, 10);
 
 // Listing Engineer task tab: today's listings + day report (generate + download).
@@ -34,16 +33,18 @@ export default function MyListingsScreen() {
     setGenerating(true);
     try {
       await api('/listings/day-report', { method: 'POST', body: { date: today() } });
-      Alert.alert('Day report submitted', 'Your Admin & Manager have been notified.');
+      Alert.alert(
+        'Day report submitted',
+        'Sent to your Admin & Manager. They can see it under Listings › Submitted day reports, and you were also notified here.'
+      );
       await load();
     } catch (e) { Alert.alert('Error', e.message); }
     finally { setGenerating(false); }
   };
 
   const download = async () => {
-    const token = await getToken();
-    const url = `${API_BASE_URL}/listings/export.xlsx?date=${today()}&token=${encodeURIComponent(token)}`;
-    Linking.openURL(url).catch(() => Alert.alert('Download', 'Could not open the export.'));
+    try { await openDownload(`/listings/export.xlsx?date=${today()}`); }
+    catch { Alert.alert('Download', 'Could not open the export.'); }
   };
 
   const renderItem = ({ item }) => (
@@ -56,7 +57,13 @@ export default function MyListingsScreen() {
         {[item.customer_name, item.phone, item.location, item.pincode].filter(Boolean).join(' · ')}
       </Text>
       {item.requirement ? <Text style={styles.body} numberOfLines={2}>{item.requirement}</Text> : null}
-      <Text style={styles.meta}>{[item.category, item.quantity, item.budget, fmt(item.listing_date)].filter(Boolean).join('  •  ')}</Text>
+      {item.materials && item.materials.length ? (
+        <Text style={styles.body}>
+          {item.materials.map((m) => [m.material, m.quantity, m.unit].filter(Boolean).join(' ')).join(', ')}
+        </Text>
+      ) : null}
+      <Text style={styles.meta}>{[item.category, item.quantity, item.budget].filter(Boolean).join('  •  ')}</Text>
+      <Text style={styles.stamp}>🕑 {fmtDateTime(item.created_at)}</Text>
     </Card>
   );
 
@@ -117,4 +124,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 },
   body: { fontSize: 13, color: colors.muted, marginTop: 2 },
   meta: { fontSize: 12, color: colors.muted, marginTop: 6 },
+  stamp: { fontSize: 12, color: colors.primary, fontWeight: '700', marginTop: 4 },
 });

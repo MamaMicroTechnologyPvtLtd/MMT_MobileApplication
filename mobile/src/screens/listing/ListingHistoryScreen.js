@@ -71,6 +71,7 @@ export default function ListingHistoryScreen() {
         ))}
       </View>
       <FlatList
+        style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}
         data={data}
         keyExtractor={(x, i) => String(x.id ?? i)}

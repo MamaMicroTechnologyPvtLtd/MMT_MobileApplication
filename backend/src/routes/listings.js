@@ -11,6 +11,18 @@ const isManager = (req) => ['admin', 'manager'].includes(req.user.staff_role);
 const EDITABLE = ['project_name', 'customer_name', 'phone', 'location', 'pincode',
   'category', 'requirement', 'quantity', 'budget', 'status', 'remark'];
 
+// Normalise a materials array: [{ material, quantity, unit }] — drop blanks.
+function cleanMaterials(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((m) => ({
+      material: (m.material || '').toString().trim(),
+      quantity: (m.quantity || '').toString().trim(),
+      unit: (m.unit || '').toString().trim(),
+    }))
+    .filter((m) => m.material || m.quantity || m.unit);
+}
+
 /**
  * POST /api/listings  (Listing Engineer / any internal)
  * Record a project listing. Tied to the logged-in engineer and today's date
@@ -28,13 +40,14 @@ router.post(
     const { rows } = await query(
       `INSERT INTO listings
         (engineer_id, engineer_name, project_name, customer_name, phone, location,
-         pincode, category, requirement, quantity, budget, status, remark, listing_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, COALESCE($14, CURRENT_DATE))
+         pincode, category, requirement, quantity, budget, status, remark, materials, listing_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, COALESCE($15, CURRENT_DATE))
        RETURNING *`,
       [req.user.id, req.body.engineer_name || null, b.project_name || null, b.customer_name || null,
        b.phone || null, b.location || null, b.pincode || null, b.category || null,
        b.requirement || null, b.quantity || null, b.budget || null,
-       b.status || 'follow_up', b.remark || null, b.listing_date || null]
+       b.status || 'follow_up', b.remark || null, JSON.stringify(cleanMaterials(b.materials)),
+       b.listing_date || null]
     );
     return res.status(201).json(rows[0]);
   })
@@ -162,6 +175,31 @@ router.post(
 );
 
 /**
+ * GET /api/listings/day-reports  (Admin/Manager) — submitted day reports across
+ * the team (this is where a listing engineer's "Generate & submit" lands).
+ * Optional ?date= and ?engineer_id= filters.
+ */
+router.get(
+  '/day-reports',
+  authenticate,
+  requireStaff('admin', 'manager'),
+  asyncHandler(async (req, res) => {
+    const clauses = [];
+    const params = [];
+    if (req.query.date) { params.push(req.query.date); clauses.push(`dr.report_date = $${params.length}`); }
+    if (req.query.engineer_id) { params.push(Number(req.query.engineer_id)); clauses.push(`dr.engineer_id = $${params.length}`); }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const { rows } = await query(
+      `SELECT dr.*, u.full_name AS engineer_full_name, u.email AS engineer_email
+         FROM day_reports dr JOIN users u ON u.id = dr.engineer_id
+         ${where} ORDER BY dr.report_date DESC, dr.generated_at DESC LIMIT 200`,
+      params
+    );
+    return res.json(rows);
+  })
+);
+
+/**
  * GET /api/listings/export.xlsx  — the daily Excel sheet.
  * Engineer: own; Admin/Manager: any (?engineer_id). ?date filters the day.
  * Auth via header or ?token= for file download.
@@ -172,37 +210,47 @@ router.get(
   requireStaff(),
   asyncHandler(async (req, res) => {
     const manager = isManager(req);
-    const engineerId = manager && req.query.engineer_id ? Number(req.query.engineer_id) : req.user.id;
-    const clauses = ['l.engineer_id = $1'];
-    const params = [engineerId];
+    const clauses = [];
+    const params = [];
+    // Engineer: always own. Manager: a specific engineer if given, else EVERYONE
+    // (the whole team's sheet).
+    if (!manager) { params.push(req.user.id); clauses.push(`l.engineer_id = $${params.length}`); }
+    else if (req.query.engineer_id) { params.push(Number(req.query.engineer_id)); clauses.push(`l.engineer_id = $${params.length}`); }
     if (req.query.date) { params.push(req.query.date); clauses.push(`l.listing_date = $${params.length}`); }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 
     const { rows } = await query(
       `SELECT l.*, u.full_name AS engineer_full_name FROM listings l
          JOIN users u ON u.id = l.engineer_id
-        WHERE ${clauses.join(' AND ')} ORDER BY l.listing_date, l.created_at`,
+        ${where} ORDER BY l.listing_date DESC, u.full_name, l.created_at`,
       params
     );
 
+    const fmtMaterials = (m) => (Array.isArray(m) && m.length
+      ? m.map((x) => [x.material, x.quantity, x.unit].filter(Boolean).join(' ')).join(', ') : '');
     const cols = [
       { header: '#', key: 'n', width: 5 },
       { header: 'Date', key: 'listing_date', width: 12 },
+      { header: 'Time', key: 'time', width: 10 },
+      { header: 'Engineer', key: 'engineer_full_name', width: 20 },
       { header: 'Project', key: 'project_name', width: 24 },
       { header: 'Customer', key: 'customer_name', width: 20 },
       { header: 'Phone', key: 'phone', width: 16 },
       { header: 'Location', key: 'location', width: 20 },
       { header: 'Pincode', key: 'pincode', width: 10 },
       { header: 'Category', key: 'category', width: 16 },
+      { header: 'Materials (qty · unit)', key: 'materials_text', width: 34 },
       { header: 'Requirement', key: 'requirement', width: 28 },
       { header: 'Quantity', key: 'quantity', width: 12 },
       { header: 'Budget', key: 'budget', width: 12 },
       { header: 'Status', key: 'status', width: 12 },
       { header: 'Remark', key: 'remark', width: 24 },
     ];
+    const lastCol = String.fromCharCode(64 + cols.length); // e.g. 'P'
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Listings', { views: [{ state: 'frozen', ySplit: 3 }] });
-    ws.mergeCells('A1', 'M1');
-    ws.getCell('A1').value = `Listings — ${rows[0]?.engineer_full_name || 'Engineer'}${req.query.date ? ` · ${req.query.date}` : ''}`;
+    ws.mergeCells(`A1`, `${lastCol}1`);
+    ws.getCell('A1').value = `Listings — ${req.query.engineer_id ? (rows[0]?.engineer_full_name || 'Engineer') : 'All engineers'}${req.query.date ? ` · ${req.query.date}` : ''}`;
     ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF0F766E' } };
     ws.addRow([]);
     ws.columns = cols.map((c) => ({ key: c.key, width: c.width }));
@@ -212,10 +260,14 @@ router.get(
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
       cell.alignment = { horizontal: 'center' };
     });
-    rows.forEach((r, idx) => ws.addRow({ ...r, n: idx + 1, listing_date: r.listing_date }));
+    rows.forEach((r, idx) => ws.addRow({
+      ...r, n: idx + 1, listing_date: r.listing_date,
+      time: r.created_at ? new Date(r.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '',
+      materials_text: fmtMaterials(r.materials),
+    }));
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Listings_${engineerId}${req.query.date ? `_${req.query.date}` : ''}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Listings${req.query.engineer_id ? `_${req.query.engineer_id}` : '_all'}${req.query.date ? `_${req.query.date}` : ''}.xlsx"`);
     await wb.xlsx.write(res);
     return res.end();
   })
@@ -244,6 +296,9 @@ router.patch(
     let i = 1;
     for (const col of EDITABLE) {
       if (req.body[col] !== undefined) { sets.push(`${col} = $${i}`); params.push(req.body[col]); i += 1; }
+    }
+    if (req.body.materials !== undefined) {
+      sets.push(`materials = $${i}`); params.push(JSON.stringify(cleanMaterials(req.body.materials))); i += 1;
     }
     if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' });
     sets.push('updated_at = now()');

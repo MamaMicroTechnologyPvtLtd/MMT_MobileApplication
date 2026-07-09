@@ -1,7 +1,8 @@
 const express = require('express');
-const { query } = require('../config/db');
+const { query, withTransaction } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { pushInternal } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -111,6 +112,64 @@ router.get(
       [req.user.supplier_id]
     );
     return res.json(rows);
+  })
+);
+
+/**
+ * PATCH /api/supplier/requirements/:orderId/confirm  (Supplier)
+ * The supplier accepts the final quotation / PO and confirms the order. Only
+ * allowed once the Internal team has advanced this supplier to a final stage
+ * (final_quotation or final_po). This is what actually confirms the order for
+ * the supplier — the Internal team then creates the delivery with the
+ * bill / invoice / e-way / PO documents.
+ */
+router.patch(
+  '/requirements/:orderId/confirm',
+  authenticate,
+  requireRole('supplier'),
+  asyncHandler(async (req, res) => {
+    const { supplier_id } = req.user;
+    const { orderId } = req.params;
+    const link = await query(
+      'SELECT stage, status FROM order_suppliers WHERE order_id = $1 AND supplier_id = $2',
+      [orderId, supplier_id]
+    );
+    if (link.rows.length === 0) return res.status(404).json({ error: 'Requirement not found' });
+    if (!['final_quotation', 'final_po'].includes(link.rows[0].stage)) {
+      return res.status(400).json({ error: 'You can confirm only after the MMT team asks for your final quotation/PO.' });
+    }
+
+    const result = await withTransaction(async (client) => {
+      await client.query(
+        `UPDATE order_suppliers SET status = 'confirmed' WHERE order_id = $1 AND supplier_id = $2`,
+        [orderId, supplier_id]
+      );
+      // Mark the supplier's most recent quotation on this order as confirmed.
+      await client.query(
+        `UPDATE supplier_quotations SET status = 'confirmed', updated_at = now()
+          WHERE id = (SELECT id FROM supplier_quotations
+                       WHERE order_id = $1 AND supplier_id = $2 ORDER BY created_at DESC LIMIT 1)`,
+        [orderId, supplier_id]
+      );
+      await client.query(
+        `UPDATE orders SET status = 'confirmed', updated_at = now() WHERE order_id = $1`,
+        [orderId]
+      );
+      await client.query(
+        `INSERT INTO notifications (type, title, body, data)
+         VALUES ('order', $1, $2, $3)`,
+        [`Order confirmed by ${supplier_id} · ${orderId}`,
+         'The supplier accepted the final quotation. Create the delivery with the documents.',
+         JSON.stringify({ order_id: orderId, supplier_id })]
+      );
+      return { order_id: orderId, supplier_id, status: 'confirmed' };
+    });
+    pushInternal({
+      title: `Order confirmed · ${orderId}`,
+      body: `${supplier_id} accepted the final quotation.`,
+      data: { type: 'order', order_id: orderId, supplier_id },
+    }).catch(() => {});
+    return res.json(result);
   })
 );
 

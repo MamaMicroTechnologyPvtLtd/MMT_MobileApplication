@@ -5,9 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../api/client';
 import { Card, Badge, EmptyState } from '../../components/ui';
-import { colors, spacing } from '../../theme';
-
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+import { colors, spacing, fmtDateTime as fmt } from '../../theme';
 
 export default function OrdersScreen({ navigation }) {
   const [orders, setOrders] = useState([]);

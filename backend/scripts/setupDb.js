@@ -51,6 +51,16 @@ async function main() {
                     CHECK (status IN ('received','shortlisted','finalized','rejected','deferred'))`);
   // Internal PO attached when asking a supplier for the final quotation.
   await pool.query('ALTER TABLE order_suppliers ADD COLUMN IF NOT EXISTS po_url TEXT');
+  // A listing can carry many materials (cement, steel, sand …) each with its own
+  // quantity + unit.
+  await pool.query("ALTER TABLE listings ADD COLUMN IF NOT EXISTS materials JSONB DEFAULT '[]'");
+  // Supplier confirmation of the final quotation → order confirmed for them.
+  await pool.query('ALTER TABLE supplier_quotations DROP CONSTRAINT IF EXISTS supplier_quotations_status_check');
+  await pool.query(`ALTER TABLE supplier_quotations ADD CONSTRAINT supplier_quotations_status_check
+                    CHECK (status IN ('received','shortlisted','finalized','rejected','deferred','confirmed'))`);
+  await pool.query('ALTER TABLE order_suppliers DROP CONSTRAINT IF EXISTS order_suppliers_status_check');
+  await pool.query(`ALTER TABLE order_suppliers ADD CONSTRAINT order_suppliers_status_check
+                    CHECK (status IN ('sent','responded','shortlisted','finalized','rejected','confirmed'))`);
 
   // Seed a default category taxonomy (idempotent).
   const TAXONOMY = {

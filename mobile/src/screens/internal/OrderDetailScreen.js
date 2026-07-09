@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity, Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { api, API_BASE_URL, getToken } from '../../api/client';
+import { api, openDownload } from '../../api/client';
 import { Card, Badge, Button, EmptyState } from '../../components/ui';
 import UploadField from '../../components/UploadField';
 import { colors, spacing, radius, statusColor } from '../../theme';
@@ -49,11 +49,7 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   const exportSheet = async () => {
     try {
-      const token = await getToken();
-      const url = `${API_BASE_URL}/orders/${orderId}/comparison.xlsx?token=${encodeURIComponent(token)}`;
-      const ok = await Linking.canOpenURL(url);
-      if (ok) await Linking.openURL(url);
-      else Alert.alert('Export', 'Could not open the export link on this device.');
+      await openDownload(`/orders/${orderId}/comparison.xlsx`);
     } catch (e) {
       Alert.alert('Export failed', e.message);
     }
@@ -62,6 +58,9 @@ export default function OrderDetailScreen({ route, navigation }) {
   if (!order) {
     return <View style={styles.center}><Text style={{ color: colors.muted }}>Loading…</Text></View>;
   }
+
+  // The supplier who accepted the final quotation (if any) — links the delivery.
+  const confirmedRow = rows.find((r) => r.status === 'confirmed');
 
   return (
     <ScrollView
@@ -175,12 +174,23 @@ export default function OrderDetailScreen({ route, navigation }) {
         </View>
       ) : null}
 
+      {confirmedRow ? (
+        <View style={styles.confirmBanner}>
+          <Text style={styles.confirmText}>
+            ✓ {confirmedRow.supplier_firm_name || confirmedRow.supplier_id} confirmed this order. Create the delivery with the documents.
+          </Text>
+        </View>
+      ) : null}
+
       <View style={{ height: spacing.md }} />
       <Button title="Manage payments" variant="ghost"
         onPress={() => navigation.navigate('ManagePayments', { orderId, customerId: order.customer_id })} />
       <View style={{ height: spacing.sm }} />
       <Button title="Create delivery for this order" variant="ghost"
-        onPress={() => navigation.navigate('CreateDelivery', { orderId, customerId: order.customer_id, projectId: order.project_id })} />
+        onPress={() => navigation.navigate('CreateDelivery', {
+          orderId, customerId: order.customer_id, projectId: order.project_id,
+          supplierId: confirmedRow?.supplier_id,
+        })} />
       <View style={{ height: spacing.xl }} />
     </ScrollView>
   );
@@ -239,4 +249,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6,
   },
   miniText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
+  confirmBanner: { marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: `${colors.success}18`, borderWidth: 1, borderColor: colors.success },
+  confirmText: { color: colors.success, fontWeight: '700', fontSize: 13 },
 });

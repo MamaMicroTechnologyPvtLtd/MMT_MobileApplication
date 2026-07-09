@@ -5,9 +5,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../api/client';
 import { Card, Badge, EmptyState, Button } from '../../components/ui';
-import { colors, spacing } from '../../theme';
-
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '');
+import { colors, spacing, fmtDateTime as fmt } from '../../theme';
 
 // Internal home: the enquiries raised by customers appear on top. From here the
 // internal member creates a Project + Order and moves into the supplier flow.

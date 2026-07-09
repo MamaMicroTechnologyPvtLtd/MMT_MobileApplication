@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api, fileUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Card, Badge, EmptyState } from '../components/ui';
-import { colors, spacing, radius } from '../theme';
+import { colors, spacing, radius, fmtDateTime } from '../theme';
 
 // History, shown category-wise. Customers see received-quotation history; the
 // internal team sees the orders feed in its place.
@@ -40,7 +40,7 @@ const categoriesForRole = (role) => {
 };
 
 const money = (v) => (v == null ? '—' : `₹${Number(v).toLocaleString('en-IN')}`);
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+const fmt = fmtDateTime;
 
 export default function HistoryScreen() {
   const { user } = useAuth();
@@ -98,15 +98,22 @@ export default function HistoryScreen() {
             <Text style={styles.meta}>{item.order_id ? `Order ${item.order_id} · ` : ''}{fmt(item.created_at)}</Text>
           </Card>
         );
-      case 'orders':
+      case 'orders': {
+        const cat = [item.category, item.subcategory].filter(Boolean).join(' › ');
         return (
           <Card>
             <Head id={item.order_id} status={item.status} />
-            <Text style={styles.title}>{[item.first_name, item.last_name].filter(Boolean).join(' ') || item.customer_id}</Text>
-            <Text style={styles.body} numberOfLines={2}>{item.requirement || '—'}</Text>
+            <Text style={styles.title}>{cat || item.requirement || 'Order'}</Text>
+            {item.requirement && cat ? <Text style={styles.body} numberOfLines={2}>{item.requirement}</Text> : null}
+            <View style={styles.kv}>
+              {item.quantity ? <Text style={styles.chip}>Qty: {item.quantity}</Text> : null}
+              {item.price_range ? <Text style={styles.chip}>Price: {item.price_range}</Text> : null}
+              {item.project_id ? <Text style={styles.chip}>Project {item.project_id}</Text> : null}
+            </View>
             <Text style={styles.meta}>{item.quotes_count || 0} quotes · {fmt(item.created_at)}</Text>
           </Card>
         );
+      }
       case 'deliveries':
         return (
           <Card>
@@ -169,6 +176,7 @@ export default function HistoryScreen() {
       </ScrollView>
 
       <FlatList
+        style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}
         data={data}
         keyExtractor={keyFor}
@@ -214,6 +222,11 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.muted, marginTop: 6 },
   notifTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   notifDot: { color: colors.primary, fontSize: 12 },
+  kv: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  chip: {
+    fontSize: 12, color: colors.primaryDark, backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, fontWeight: '700', overflow: 'hidden',
+  },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: 6 },
   link: { color: colors.primary, fontWeight: '700', fontSize: 13 },
 });

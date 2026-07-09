@@ -31,7 +31,7 @@ router.get(
     const [
       customers, suppliers, listingEngineers, enquiryRows, orderRows, deliveryRows,
       supplierQuotes, customerQuotes, revenue, payments,
-      recentEnquiries, recentOrders,
+      recentEnquiries, recentOrders, recentListings,
     ] = await Promise.all([
       query('SELECT count(*)::int AS n FROM customers'),
       query('SELECT count(*)::int AS n FROM suppliers'),
@@ -54,6 +54,11 @@ router.get(
       query(`SELECT o.order_id, o.status, o.requirement, o.created_at,
                     (SELECT count(*)::int FROM supplier_quotations sq WHERE sq.order_id = o.order_id) AS quotes
                FROM orders o ORDER BY o.created_at DESC LIMIT 5`),
+      query(`SELECT l.id, l.project_name, l.customer_name, l.phone, l.location, l.pincode,
+                    l.category, l.quantity, l.budget, l.materials, l.status, l.listing_date, l.created_at,
+                    u.full_name AS engineer_full_name
+               FROM listings l JOIN users u ON u.id = l.engineer_id
+              ORDER BY l.created_at DESC LIMIT 8`),
     ]);
 
     return res.json({
@@ -76,6 +81,7 @@ router.get(
       },
       recent_enquiries: recentEnquiries.rows,
       recent_orders: recentOrders.rows,
+      recent_listings: recentListings.rows,
     });
   })
 );
