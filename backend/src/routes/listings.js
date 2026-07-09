@@ -3,7 +3,7 @@ const ExcelJS = require('exceljs');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate, authenticateFlexible, requireStaff } = require('../middleware/auth');
-const { pushInternal } = require('../utils/notify');
+const { pushInternal, pushUser } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -230,9 +230,10 @@ router.patch(
   authenticate,
   requireStaff(),
   asyncHandler(async (req, res) => {
-    const existing = await query('SELECT engineer_id FROM listings WHERE id = $1', [req.params.id]);
+    const existing = await query('SELECT engineer_id, project_name FROM listings WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Listing not found' });
-    if (!isManager(req) && existing.rows[0].engineer_id !== req.user.id) {
+    const ownerId = existing.rows[0].engineer_id;
+    if (!isManager(req) && ownerId !== req.user.id) {
       return res.status(403).json({ error: 'You can only edit your own listings' });
     }
     if (req.body.status && !['positive', 'negative', 'follow_up'].includes(req.body.status)) {
@@ -251,6 +252,22 @@ router.patch(
       `UPDATE listings SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`,
       params
     );
+
+    // If a manager/admin edited someone else's listing, alert that engineer so
+    // it shows in their History → Alerts.
+    if (isManager(req) && ownerId !== req.user.id) {
+      const label = rows[0].project_name || existing.rows[0].project_name || 'A listing';
+      const statusNote = req.body.status ? ` — status set to "${req.body.status}"` : '';
+      const title = 'Your listing was updated by the team';
+      const body = `${label}${statusNote}`;
+      await query(
+        `INSERT INTO notifications (user_id, type, title, body)
+         VALUES ($1, 'general', $2, $3)`,
+        [ownerId, title, body]
+      ).catch(() => {});
+      pushUser(ownerId, { title, body, data: { type: 'general', listing_id: rows[0].id } }).catch(() => {});
+    }
+
     return res.json(rows[0]);
   })
 );

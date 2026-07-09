@@ -23,8 +23,12 @@ router.get(
     } else if (role === 'supplier') {
       where = '(supplier_id = $1 OR user_id = $2)';
       params = [supplier_id, id];
+    } else if (req.user.staff_role === 'listing_engineer') {
+      // listing engineers only see notifications addressed to them
+      where = 'user_id = $1';
+      params = [id];
     } else {
-      // internal sees company-wide + personal
+      // admin/manager see company-wide + personal
       where = "(user_id = $1 OR (customer_id IS NULL AND supplier_id IS NULL) OR type = 'order')";
       params = [id];
     }

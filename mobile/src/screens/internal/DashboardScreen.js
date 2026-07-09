@@ -8,7 +8,7 @@ import { Card, Badge } from '../../components/ui';
 import { colors, spacing, radius } from '../../theme';
 
 const money = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '');
+const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
 
 export default function DashboardScreen({ navigation }) {
   const [data, setData] = useState(null);
@@ -36,8 +36,9 @@ export default function DashboardScreen({ navigation }) {
       <Text style={styles.h1}>Dashboard</Text>
 
       <View style={styles.tiles}>
-        <Tile label="Customers" value={data.customers} icon="👥" />
-        <Tile label="Suppliers" value={data.suppliers} icon="🏭" />
+        <Tile label="Customers" value={data.customers} icon="👥" onPress={() => navigation.navigate('Directory', { tab: 'customers' })} />
+        <Tile label="Suppliers" value={data.suppliers} icon="🏭" onPress={() => navigation.navigate('Directory', { tab: 'suppliers' })} />
+        <Tile label="Listing Engineers" value={data.listing_engineers ?? 0} icon="👷" tint={colors.accent} onPress={() => navigation.navigate('Staff')} />
         <Tile label="New enquiries" value={data.enquiries.new} icon="📥" tint={colors.info} onPress={() => navigation.navigate('Enquiries')} />
         <Tile label="Open orders" value={openOrders} icon="📦" onPress={() => navigation.navigate('Orders')} />
         <Tile label="Quotes to action" value={pendingQuotes} icon="📄" tint={colors.warning} />

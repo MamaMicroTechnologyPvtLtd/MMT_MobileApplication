@@ -44,5 +44,9 @@ async function pushSupplier(supplierId, payload) {
 async function pushInternal(payload) {
   await sendExpoPush(await tokensFor("role = 'internal'", []), payload);
 }
+async function pushUser(userId, payload) {
+  if (!userId) return;
+  await sendExpoPush(await tokensFor('id = $1', [userId]), payload);
+}
 
-module.exports = { sendExpoPush, pushCustomer, pushSupplier, pushInternal };
+module.exports = { sendExpoPush, pushCustomer, pushSupplier, pushInternal, pushUser };

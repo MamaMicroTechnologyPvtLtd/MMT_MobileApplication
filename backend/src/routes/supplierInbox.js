@@ -70,4 +70,48 @@ router.get(
   })
 );
 
+/**
+ * GET /api/supplier/quotations  (Supplier) — all quotations this supplier has
+ * submitted, with the order + category, for the History tab. Optional ?status=.
+ */
+router.get(
+  '/quotations',
+  authenticate,
+  requireRole('supplier'),
+  asyncHandler(async (req, res) => {
+    const params = [req.user.supplier_id];
+    let where = 'sq.supplier_id = $1';
+    if (req.query.status) { params.push(req.query.status); where += ` AND sq.status = $${params.length}`; }
+    const { rows } = await query(
+      `SELECT sq.id, sq.order_id, sq.price, sq.quantity, sq.duration, sq.duration_unit,
+              sq.note, sq.message, sq.stage, sq.status, sq.document_url, sq.created_at,
+              o.category, o.subcategory, o.requirement, o.status AS order_status
+         FROM supplier_quotations sq JOIN orders o ON o.order_id = sq.order_id
+        WHERE ${where} ORDER BY sq.created_at DESC LIMIT 300`,
+      params
+    );
+    return res.json(rows);
+  })
+);
+
+/**
+ * GET /api/supplier/deliveries  (Supplier) — deliveries fulfilled by this
+ * supplier (delivered orders history).
+ */
+router.get(
+  '/deliveries',
+  authenticate,
+  requireRole('supplier'),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `SELECT d.delivery_id, d.order_id, d.status, d.vehicle_number, d.delivery_location, d.created_at,
+              o.category, o.subcategory
+         FROM deliveries d LEFT JOIN orders o ON o.order_id = d.order_id
+        WHERE d.supplier_id = $1 ORDER BY d.created_at DESC`,
+      [req.user.supplier_id]
+    );
+    return res.json(rows);
+  })
+);
+
 module.exports = router;

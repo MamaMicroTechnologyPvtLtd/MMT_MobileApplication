@@ -29,12 +29,13 @@ router.get(
   requireStaff('admin', 'manager'),
   asyncHandler(async (req, res) => {
     const [
-      customers, suppliers, enquiryRows, orderRows, deliveryRows,
+      customers, suppliers, listingEngineers, enquiryRows, orderRows, deliveryRows,
       supplierQuotes, customerQuotes, revenue, payments,
       recentEnquiries, recentOrders,
     ] = await Promise.all([
       query('SELECT count(*)::int AS n FROM customers'),
       query('SELECT count(*)::int AS n FROM suppliers'),
+      query("SELECT count(*)::int AS n FROM users WHERE role = 'internal' AND staff_role = 'listing_engineer'"),
       query('SELECT status AS key, count(*)::int AS count FROM enquiries GROUP BY status'),
       query('SELECT status AS key, count(*)::int AS count FROM orders GROUP BY status'),
       query('SELECT status AS key, count(*)::int AS count FROM deliveries GROUP BY status'),
@@ -58,6 +59,7 @@ router.get(
     return res.json({
       customers: customers.rows[0].n,
       suppliers: suppliers.rows[0].n,
+      listing_engineers: listingEngineers.rows[0].n,
       enquiries: tally(enquiryRows.rows, ['new', 'in_discussion', 'quoted', 'closed']),
       orders: tally(orderRows.rows, [
         'created', 'sent_to_suppliers', 'quotes_received', 'shortlisted', 'finalized',

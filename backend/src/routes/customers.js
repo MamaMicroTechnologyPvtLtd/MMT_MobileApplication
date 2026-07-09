@@ -152,6 +152,32 @@ router.post(
 );
 
 /**
+ * GET /api/customers/:id/history  (Internal) — the customer's projects and
+ * orders (including everything imported from the old software, 2018 onwards).
+ */
+router.get(
+  '/:id/history',
+  authenticate,
+  requireRole('internal'),
+  asyncHandler(async (req, res) => {
+    const [projects, orders] = await Promise.all([
+      query(
+        `SELECT p.project_id, p.ward, p.created_at,
+                (SELECT count(*)::int FROM orders o WHERE o.project_id = p.project_id) AS orders_count
+           FROM projects p WHERE p.customer_id = $1 ORDER BY p.created_at DESC`,
+        [req.params.id]
+      ),
+      query(
+        `SELECT order_id, project_id, status, requirement, category, subcategory, created_at
+           FROM orders WHERE customer_id = $1 ORDER BY created_at DESC`,
+        [req.params.id]
+      ),
+    ]);
+    return res.json({ projects: projects.rows, orders: orders.rows });
+  })
+);
+
+/**
  * GET /api/customers/:id — internal (any) or customer (own).
  */
 router.get(

@@ -7,16 +7,34 @@ import { api } from '../../api/client';
 import { Card, Button, EmptyState } from '../../components/ui';
 import { colors, spacing, radius } from '../../theme';
 
-// Directory: choose an existing customer/supplier to EDIT (keep region details up
-// to date), or ADD a new one (continues the C/S id series).
-export default function DirectoryScreen({ navigation }) {
-  const [tab, setTab] = useState('customers');
+const ROLE_LABEL = { admin: 'Admin', manager: 'Manager', listing_engineer: 'Listing Engineer' };
+
+// Directory: choose an existing customer/supplier/employee to EDIT (keep details
+// up to date), or ADD a new one (continues the C/S id series).
+export default function DirectoryScreen({ navigation, route }) {
+  const [tab, setTab] = useState(route?.params?.tab || 'customers');
   const [q, setQ] = useState('');
   const [items, setItems] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Honour the tab passed in from Dashboard drilldowns.
+  React.useEffect(() => {
+    if (route?.params?.tab && route.params.tab !== tab) {
+      setTab(route.params.tab);
+      setItems([]);
+    }
+  }, [route?.params?.tab]);
+
   const load = useCallback(async () => {
     try {
+      if (tab === 'employees') {
+        const staff = await api('/staff');
+        const needle = q.trim().toLowerCase();
+        setItems(needle
+          ? staff.filter((s) => `${s.full_name || ''} ${s.email || ''}`.toLowerCase().includes(needle))
+          : staff);
+        return;
+      }
       const isPin = /^\d{5,6}$/.test(q.trim());
       const params = q.trim() ? (isPin ? `pincode=${q.trim()}` : `q=${encodeURIComponent(q.trim())}`) : '';
       setItems(await api(`/${tab}?${params}`));
@@ -55,12 +73,34 @@ export default function DirectoryScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  const renderEmployee = ({ item }) => (
+    <TouchableOpacity onPress={() => navigation.navigate('Staff')}>
+      <Card>
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name}>{item.full_name || item.email}</Text>
+            <Text style={styles.meta}>{item.email}</Text>
+          </View>
+          <Text style={styles.id}>{ROLE_LABEL[item.staff_role] || item.staff_role || '—'}</Text>
+        </View>
+      </Card>
+    </TouchableOpacity>
+  );
+
+  const renderItem = tab === 'customers' ? renderCustomer : tab === 'suppliers' ? renderSupplier : renderEmployee;
+  const addLabel = tab === 'customers' ? '+ Add new customer' : tab === 'suppliers' ? '+ Add new supplier' : '+ Add new employee';
+  const goAdd = () => {
+    if (tab === 'customers') navigation.navigate('CustomerForm', {});
+    else if (tab === 'suppliers') navigation.navigate('SupplierForm', {});
+    else navigation.navigate('Staff');
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={styles.tabs}>
-        {['customers', 'suppliers'].map((t) => (
+        {['customers', 'suppliers', 'employees'].map((t) => (
           <TouchableOpacity key={t} onPress={() => { setTab(t); setItems([]); }} style={[styles.tab, tab === t && styles.tabOn]}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextOn]}>{t === 'customers' ? 'Customers' : 'Suppliers'}</Text>
+            <Text style={[styles.tabText, tab === t && styles.tabTextOn]}>{t === 'customers' ? 'Customers' : t === 'suppliers' ? 'Suppliers' : 'Employees'}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -68,16 +108,13 @@ export default function DirectoryScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.navigate('ManageCategories')}>
           <Text style={styles.catLinkText}>⚙ Categories ›</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Staff')}>
-          <Text style={styles.catLinkText}>👥 Employees ›</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.searchRow}>
         <TextInput
           value={q}
           onChangeText={setQ}
-          placeholder="Search name / id, or pincode"
+          placeholder={tab === 'employees' ? 'Search employee name / email' : 'Search name / id, or pincode'}
           placeholderTextColor={colors.muted}
           style={styles.input}
           onSubmitEditing={load}
@@ -87,19 +124,15 @@ export default function DirectoryScreen({ navigation }) {
       </View>
 
       <View style={{ paddingHorizontal: spacing.lg }}>
-        <Button
-          title={tab === 'customers' ? '+ Add new customer' : '+ Add new supplier'}
-          variant="ghost"
-          onPress={() => navigation.navigate(tab === 'customers' ? 'CustomerForm' : 'SupplierForm', {})}
-        />
+        <Button title={addLabel} variant="ghost" onPress={goAdd} />
       </View>
 
       <FlatList
         contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}
         data={items}
-        keyExtractor={(x) => x.customer_id || x.supplier_id}
-        renderItem={tab === 'customers' ? renderCustomer : renderSupplier}
-        ListEmptyComponent={<EmptyState icon="🔎" title="Nothing to show" subtitle="Search by name or pincode, or add a new record." />}
+        keyExtractor={(x) => x.customer_id || x.supplier_id || String(x.id)}
+        renderItem={renderItem}
+        ListEmptyComponent={<EmptyState icon="🔎" title="Nothing to show" subtitle="Search or add a new record." />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
       />
     </View>

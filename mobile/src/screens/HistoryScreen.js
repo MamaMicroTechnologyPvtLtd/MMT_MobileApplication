@@ -13,6 +13,8 @@ import { colors, spacing, radius } from '../theme';
 // internal team sees the orders feed in its place.
 const CUSTOMER_CATEGORIES = [
   { key: 'enquiries', label: 'Enquiries', icon: '📝', path: '/enquiries' },
+  { key: 'projects', label: 'Projects', icon: '🏗️', path: '/projects/mine' },
+  { key: 'orders', label: 'Orders', icon: '📦', path: '/orders' },
   { key: 'quotations', label: 'Quotations', icon: '📄', path: '/quotations' },
   { key: 'deliveries', label: 'Deliveries', icon: '🚚', path: '/deliveries' },
   { key: 'payments', label: 'Payments', icon: '💳', path: '/payments' },
@@ -26,6 +28,8 @@ const INTERNAL_CATEGORIES = [
   { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
 ];
 const SUPPLIER_CATEGORIES = [
+  { key: 'quotations', label: 'Quotations', icon: '📄', path: '/supplier/quotations' },
+  { key: 'deliveries', label: 'Deliveries', icon: '🚚', path: '/supplier/deliveries' },
   { key: 'notifications', label: 'Alerts', icon: '🔔', path: '/notifications' },
 ];
 
@@ -72,13 +76,26 @@ export default function HistoryScreen() {
             <Text style={styles.meta}>{fmt(item.created_at)}</Text>
           </Card>
         );
-      case 'quotations':
+      case 'projects':
         return (
           <Card>
-            <Head id={item.quotation_id} status={item.status} />
-            <Text style={styles.title}>Total {money(item.total_amount)}</Text>
-            <Text style={styles.body}>{item.subject || item.requirement || ''}</Text>
+            <Head id={item.project_id} status={null} />
+            <Text style={styles.title}>{item.ward ? `Ward: ${item.ward}` : 'Project'}</Text>
+            {item.order_id ? <Text style={styles.body}>First order: {item.order_id}</Text> : null}
             <Text style={styles.meta}>{fmt(item.created_at)}</Text>
+          </Card>
+        );
+      case 'quotations':
+        // Customer quotations use quotation_id + total_amount; supplier
+        // quotations use id + price, and carry the order's category.
+        return (
+          <Card>
+            <Head id={item.quotation_id || `#${item.id}`} status={item.status} />
+            <Text style={styles.title}>{money(item.total_amount != null ? item.total_amount : item.price)}</Text>
+            <Text style={styles.body} numberOfLines={2}>
+              {item.subject || item.requirement || [item.category, item.subcategory].filter(Boolean).join(' › ') || ''}
+            </Text>
+            <Text style={styles.meta}>{item.order_id ? `Order ${item.order_id} · ` : ''}{fmt(item.created_at)}</Text>
           </Card>
         );
       case 'orders':

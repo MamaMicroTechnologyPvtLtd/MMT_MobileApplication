@@ -43,7 +43,9 @@ import ListingFormScreen from './src/screens/listing/ListingFormScreen';
 import MyListingsScreen from './src/screens/listing/MyListingsScreen';
 import DirectoryScreen from './src/screens/internal/DirectoryScreen';
 import CustomerFormScreen from './src/screens/internal/CustomerFormScreen';
+import CustomerHistoryScreen from './src/screens/internal/CustomerHistoryScreen';
 import SupplierFormScreen from './src/screens/internal/SupplierFormScreen';
+import ListingHistoryScreen from './src/screens/listing/ListingHistoryScreen';
 
 // Supplier
 import SupplierRequirementsScreen from './src/screens/supplier/SupplierRequirementsScreen';
@@ -96,6 +98,7 @@ function ListingEngineerTabs({ navigation }) {
     <Tab.Navigator screenOptions={baseTabScreenOptions(navigation)}>
       <Tab.Screen name="NewListing" component={ListingFormScreen} options={{ title: 'New Listing', tabBarIcon: tabIcon('➕') }} />
       <Tab.Screen name="Task" component={MyListingsScreen} options={{ title: 'My Task', tabBarIcon: tabIcon('🗒️') }} />
+      <Tab.Screen name="History" component={ListingHistoryScreen} options={{ title: 'History', tabBarIcon: tabIcon('🕑') }} />
     </Tab.Navigator>
   );
 }
@@ -139,6 +142,7 @@ function InternalStack() {
       <Stack.Screen name="ManageDelivery" component={ManageDeliveryScreen} options={{ title: 'Manage Delivery' }} />
       <Stack.Screen name="Directory" component={DirectoryScreen} options={{ title: 'Directory' }} />
       <Stack.Screen name="CustomerForm" component={CustomerFormScreen} options={{ title: 'Customer' }} />
+      <Stack.Screen name="CustomerHistory" component={CustomerHistoryScreen} options={{ title: 'Customer History' }} />
       <Stack.Screen name="SupplierForm" component={SupplierFormScreen} options={{ title: 'Supplier' }} />
       <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} options={{ title: 'Categories' }} />
       <Stack.Screen name="SubcategoryFields" component={SubcategoryFieldsScreen} options={{ title: 'Fields' }} />
@@ -153,7 +157,7 @@ function SupplierTabs({ navigation }) {
   return (
     <Tab.Navigator screenOptions={baseTabScreenOptions(navigation)}>
       <Tab.Screen name="Requirements" component={SupplierRequirementsScreen} options={{ title: 'Requirements', tabBarIcon: tabIcon('📥') }} />
-      <Tab.Screen name="Alerts" component={HistoryScreen} options={{ title: 'Alerts', tabBarIcon: tabIcon('🔔') }} />
+      <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'History', tabBarIcon: tabIcon('🕑') }} />
     </Tab.Navigator>
   );
 }

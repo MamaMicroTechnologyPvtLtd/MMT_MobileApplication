@@ -80,7 +80,11 @@ export default function MyListingsScreen() {
             </View>
             <Button title="Generate & submit day report" onPress={generate} loading={generating} />
             <View style={{ height: spacing.sm }} />
-            <Button title="⬇ Download Excel" variant="ghost" onPress={download} />
+            <Button title="⬇ Download Excel sheet" variant="ghost" onPress={download} />
+            <Text style={styles.reportNote}>
+              Submitting sends this report to your Admin &amp; Manager, who can view it in their dashboard.
+              Download the Excel sheet for your own records or to share.
+            </Text>
           </Card>
           <Text style={styles.h2}>My listings today</Text>
         </View>
@@ -104,6 +108,7 @@ const styles = StyleSheet.create({
   h1: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: spacing.md },
   h2: { fontSize: 16, fontWeight: '800', color: colors.text, marginTop: spacing.md, marginBottom: spacing.sm },
   reportTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
+  reportNote: { fontSize: 12, color: colors.muted, marginTop: spacing.md, lineHeight: 17 },
   counts: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
   count: { alignItems: 'center', flex: 1 },
   countValue: { fontSize: 22, fontWeight: '900', color: colors.text },

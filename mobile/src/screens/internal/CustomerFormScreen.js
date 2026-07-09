@@ -110,6 +110,23 @@ export default function CustomerFormScreen({ route, navigation }) {
 
       {isEdit ? (
         <View style={{ marginTop: spacing.xl }}>
+          <Text style={styles.h2}>Project & order history</Text>
+          <Card>
+            <Text style={styles.note}>See this customer’s projects and completed orders, including everything from the old software (2018 onwards).</Text>
+            <Button
+              title="View history"
+              variant="ghost"
+              onPress={() => navigation.navigate('CustomerHistory', {
+                customerId: existing.customer_id,
+                name: [existing.first_name, existing.last_name].filter(Boolean).join(' ') || existing.customer_id,
+              })}
+            />
+          </Card>
+        </View>
+      ) : null}
+
+      {isEdit ? (
+        <View style={{ marginTop: spacing.xl }}>
           <Text style={styles.h2}>Customer login</Text>
           {resetCreds ? (
             <CredentialsCard username={resetCreds.username} password={resetCreds.password} note="New password — shown once." />
