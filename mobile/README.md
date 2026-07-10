@@ -15,10 +15,30 @@ customers/suppliers with their **business ID** (`C####` / `S##`).
 npm install
 # Point the app at your backend. On a simulator, localhost works.
 # On a physical phone, set your machine's LAN IP in app.json > expo.extra.apiBaseUrl
-npm start            # then press a for Android, i for iOS, or scan the QR in Expo Go
+npm start            # press a for Android, i for iOS, w for web, or scan the QR in Expo Go
 ```
 
 Make sure the backend is running (`cd ../backend && npm run dev`).
+
+### ⚠️ Version pinning — do NOT upgrade the SDK to "fix" audit warnings
+
+This app is pinned to **Expo SDK 51** (React 18.2.0, React Native 0.74.5, react-dom 18.2.0,
+react-native-web 0.19.x). These versions are peer-compatible and tested together.
+
+- **Never run `npm audit fix --force`.** It force-upgrades Expo/React-Native to a new major
+  (57 / 0.86) that needs React 19, which breaks the app (ERESOLVE, missing `babel-preset-expo`).
+  The reported vulnerabilities are all in build/CLI tooling, not the shipped app.
+- **Do not run `expo upgrade` / `npx expo install --fix`** unless you intend a full, deliberate
+  SDK migration.
+- An `.npmrc` (`legacy-peer-deps=true`) is committed so `npm install` resolves cleanly.
+
+**If your install ever drifts (ERESOLVE about react@19 / expo@57), reset to the pinned set:**
+
+```bash
+git checkout -- package.json package-lock.json
+# PowerShell: Remove-Item -Recurse -Force node_modules ; else: rm -rf node_modules
+npm ci        # installs exactly the tested lockfile
+```
 
 ## Customer interface — what's built
 
