@@ -54,6 +54,9 @@ async function main() {
   // A listing can carry many materials (cement, steel, sand …) each with its own
   // quantity + unit.
   await pool.query("ALTER TABLE listings ADD COLUMN IF NOT EXISTS materials JSONB DEFAULT '[]'");
+  // An enquiry can request several materials at once, each a category/subcategory
+  // with its own quantity + unit. category/subcategory columns mirror the first.
+  await pool.query("ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'");
   // Supplier confirmation of the final quotation → order confirmed for them.
   await pool.query('ALTER TABLE supplier_quotations DROP CONSTRAINT IF EXISTS supplier_quotations_status_check');
   await pool.query(`ALTER TABLE supplier_quotations ADD CONSTRAINT supplier_quotations_status_check

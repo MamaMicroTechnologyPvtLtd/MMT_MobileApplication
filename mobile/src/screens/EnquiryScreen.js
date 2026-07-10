@@ -9,20 +9,28 @@ import { colors, spacing } from '../theme';
 
 // The Customer home: FIRST the form to send an enquiry to Internal, then the
 // customer's own recent enquiries with their status.
+const emptyItem = () => ({ categoryId: null, category: '', subcategory: '', quantity: '', unit: '' });
+
 export default function EnquiryScreen() {
-  const empty = { subject: '', message: '', quantity: '', unit: '', target_price: '', pincode: '', contact_phone: '' };
+  const empty = { subject: '', message: '', target_price: '', pincode: '', contact_phone: '' };
   const [form, setForm] = useState(empty);
   const [projectMode, setProjectMode] = useState('new'); // 'new' | 'existing'
   const [projectId, setProjectId] = useState(null);
   const [projects, setProjects] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [category, setCategory] = useState(null); // { id, name, subcategories }
-  const [subcategory, setSubcategory] = useState(null);
+  // Each item = one material: category + subcategory + quantity + unit.
+  const [items, setItems] = useState([emptyItem()]);
   const [submitting, setSubmitting] = useState(false);
   const [enquiries, setEnquiries] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const setItem = (idx, patch) => setItems((rows) => rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  const addItem = () => setItems((rows) => [...rows, emptyItem()]);
+  const removeItem = (idx) => setItems((rows) => (rows.length > 1 ? rows.filter((_, i) => i !== idx) : rows));
+  const pickCategory = (idx, c) => setItem(idx, { categoryId: c.id, category: c.name, subcategory: '' });
+  const pickSubcategory = (idx, s) => setItem(idx, { subcategory: s.name });
 
   const load = useCallback(async () => {
     try {
@@ -50,25 +58,26 @@ export default function EnquiryScreen() {
       Alert.alert('Select a project', 'Choose an existing project, or switch to "New project".');
       return;
     }
-    if (!category) {
-      Alert.alert('Select a category', 'Choose a category (and sub-category) for your enquiry.');
+    const cleanItems = items
+      .map((it) => ({ category: it.category, subcategory: it.subcategory, quantity: it.quantity.trim(), unit: it.unit.trim() }))
+      .filter((it) => it.category || it.quantity || it.unit);
+    if (cleanItems.length === 0 || !cleanItems.some((it) => it.category)) {
+      Alert.alert('Add a material', 'Choose at least one category (and its quantity/unit).');
       return;
     }
     setSubmitting(true);
     try {
       const body = {
         ...form,
-        category: category?.name,
-        subcategory: subcategory?.name,
+        items: cleanItems,
         project_id: projectMode === 'existing' ? projectId : undefined,
       };
       const created = await api('/enquiries', { method: 'POST', body });
-      Alert.alert('Enquiry sent', `Your enquiry ${created.enquiry_id} has been sent to the MMT team.`);
+      Alert.alert('Enquiry sent', `Your enquiry ${created.enquiry_id} (${cleanItems.length} material${cleanItems.length > 1 ? 's' : ''}) has been sent to the MMT team.`);
       setForm(empty);
       setProjectId(null);
       setProjectMode('new');
-      setCategory(null);
-      setSubcategory(null);
+      setItems([emptyItem()]);
       load();
     } catch (e) {
       Alert.alert('Could not send', e.message);
@@ -123,41 +132,55 @@ export default function EnquiryScreen() {
           )
         ) : null}
 
-        <Text style={styles.label}>Category *</Text>
-        <View style={styles.projList}>
-          {categories.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              onPress={() => { setCategory(c); setSubcategory(null); }}
-              style={[styles.projChip, category?.id === c.id && styles.projChipOn]}
-            >
-              <Text style={[styles.projText, category?.id === c.id && styles.projTextOn]}>{c.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {category && category.subcategories?.length ? (
-          <>
-            <Text style={styles.label}>Sub-category</Text>
-            <View style={styles.projList}>
-              {category.subcategories.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  onPress={() => setSubcategory(s)}
-                  style={[styles.projChip, subcategory?.id === s.id && styles.projChipOn]}
-                >
-                  <Text style={[styles.projText, subcategory?.id === s.id && styles.projTextOn]}>{s.name}</Text>
-                </TouchableOpacity>
-              ))}
+        <Text style={styles.label}>Materials needed *</Text>
+        <Text style={styles.hint}>Add every material your project needs — each with its own category, quantity and unit (e.g. Cement · 50 · bags, then Bricks · 200 · no).</Text>
+        {items.map((it, idx) => {
+          const cat = categories.find((c) => c.id === it.categoryId);
+          return (
+            <View key={idx} style={styles.itemBox}>
+              <View style={styles.itemHead}>
+                <Text style={styles.itemTitle}>Material {idx + 1}</Text>
+                {items.length > 1 ? (
+                  <TouchableOpacity onPress={() => removeItem(idx)}><Text style={styles.itemRemove}>✕ Remove</Text></TouchableOpacity>
+                ) : null}
+              </View>
+              <View style={styles.projList}>
+                {categories.map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => pickCategory(idx, c)}
+                    style={[styles.projChip, it.categoryId === c.id && styles.projChipOn]}
+                  >
+                    <Text style={[styles.projText, it.categoryId === c.id && styles.projTextOn]}>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {cat && cat.subcategories?.length ? (
+                <View style={styles.projList}>
+                  {cat.subcategories.map((s) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      onPress={() => pickSubcategory(idx, s)}
+                      style={[styles.subChip, it.subcategory === s.name && styles.projChipOn]}
+                    >
+                      <Text style={[styles.projText, it.subcategory === s.name && styles.projTextOn]}>{s.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+              <View style={styles.two}>
+                <View style={styles.half}><Field label="Quantity" value={it.quantity} onChangeText={(v) => setItem(idx, { quantity: v })} placeholder="e.g. 50" keyboardType="numeric" /></View>
+                <View style={styles.half}><Field label="Unit" value={it.unit} onChangeText={(v) => setItem(idx, { unit: v })} placeholder="bags / tons / no" /></View>
+              </View>
             </View>
-          </>
-        ) : null}
+          );
+        })}
+        <TouchableOpacity onPress={addItem} style={styles.addItemBtn}>
+          <Text style={styles.addItemText}>+ Add another material</Text>
+        </TouchableOpacity>
 
         <Field label="Subject" value={form.subject} onChangeText={set('subject')} placeholder="Short title" />
-        <Field label="Requirement *" value={form.message} onChangeText={set('message')} placeholder="Describe your requirement in detail" multiline />
-        <View style={styles.two}>
-          <View style={styles.half}><Field label="Quantity" value={form.quantity} onChangeText={set('quantity')} placeholder="e.g. 200" keyboardType="numeric" /></View>
-          <View style={styles.half}><Field label="Unit" value={form.unit} onChangeText={set('unit')} placeholder="bags / tons" /></View>
-        </View>
+        <Field label="Requirement *" value={form.message} onChangeText={set('message')} placeholder="Describe your overall requirement" multiline />
         <View style={styles.two}>
           <View style={styles.half}><Field label="Target price" value={form.target_price} onChangeText={set('target_price')} placeholder="₹ / unit" /></View>
           <View style={styles.half}><Field label="Project pincode" value={form.pincode} onChangeText={set('pincode')} placeholder="Site / delivery pincode" keyboardType="numeric" /></View>
@@ -178,9 +201,13 @@ export default function EnquiryScreen() {
             </View>
             {e.subject ? <Text style={styles.enqSubject}>{e.subject}</Text> : null}
             <Text style={styles.enqMsg} numberOfLines={2}>{e.message}</Text>
+            {Array.isArray(e.items) && e.items.length ? (
+              <Text style={styles.enqItems}>
+                {e.items.map((it) => [it.category, it.quantity, it.unit].filter(Boolean).join(' ')).join('  •  ')}
+              </Text>
+            ) : null}
             <Text style={styles.enqMeta}>
-              {[e.category, e.quantity && `${e.quantity} ${e.unit || ''}`.trim(), e.pincode]
-                .filter(Boolean).join('  •  ')}
+              {[!e.items?.length && e.category, e.pincode].filter(Boolean).join('  •  ')}
             </Text>
           </Card>
         ))
@@ -201,12 +228,20 @@ const styles = StyleSheet.create({
   segItemOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   segText: { color: colors.muted, fontWeight: '700', fontSize: 13 },
   segTextOn: { color: '#fff' },
-  hint: { color: colors.muted, fontSize: 13, marginBottom: spacing.md },
+  hint: { color: colors.muted, fontSize: 13, marginBottom: spacing.md, lineHeight: 18 },
   projList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md },
   projChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg },
+  subChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   projChipOn: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   projText: { color: colors.text, fontWeight: '700', fontSize: 12 },
   projTextOn: { color: colors.primaryDark },
+  itemBox: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: spacing.md, marginBottom: spacing.md, backgroundColor: colors.bg },
+  itemHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  itemTitle: { fontSize: 13, fontWeight: '800', color: colors.text },
+  itemRemove: { fontSize: 12, fontWeight: '700', color: colors.danger },
+  addItemBtn: { alignSelf: 'flex-start', paddingVertical: 8, marginBottom: spacing.md },
+  addItemText: { color: colors.primary, fontWeight: '800', fontSize: 14 },
+  enqItems: { fontSize: 13, color: colors.primaryDark, fontWeight: '600', marginTop: 4 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   enqId: { fontSize: 13, fontWeight: '800', color: colors.primary },
   enqSubject: { fontSize: 15, fontWeight: '700', color: colors.text },

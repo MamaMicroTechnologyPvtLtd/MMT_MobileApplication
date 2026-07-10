@@ -45,12 +45,14 @@ router.post(
         );
       }
       const orderId = await nextOrderId(client);
-      // Inherit category/subcategory from the enquiry when not explicitly given.
+      // Inherit category/subcategory from the enquiry ONLY when no category is
+      // given. When the caller passes a category (e.g. one order per material),
+      // keep its own subcategory as-is so materials don't cross-contaminate.
       let cat = category;
       let subcat = subcategory;
-      if ((!cat || !subcat) && enquiry_id) {
+      if (!cat && enquiry_id) {
         const e = await client.query('SELECT category, subcategory FROM enquiries WHERE enquiry_id = $1', [enquiry_id]);
-        if (e.rows[0]) { cat = cat || e.rows[0].category; subcat = subcat || e.rows[0].subcategory; }
+        if (e.rows[0]) { cat = e.rows[0].category; subcat = subcat || e.rows[0].subcategory; }
       }
       const { rows } = await client.query(
         `INSERT INTO orders

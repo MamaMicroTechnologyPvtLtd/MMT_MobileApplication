@@ -20,10 +20,36 @@ router.post(
     if (!customer_id) return res.status(400).json({ error: 'No customer linked to this account' });
 
     const {
-      category, subcategory, subject, message, quantity, unit, target_price, location, pincode,
+      subject, message, target_price, location, pincode,
       contact_phone, project_id,
     } = req.body;
     if (!message) return res.status(400).json({ error: 'message (requirement) is required' });
+
+    // Items = the materials requested in this enquiry, each a category/subcategory
+    // with its own quantity + unit. For backward compatibility we also accept a
+    // single category/subcategory/quantity/unit and wrap it into one item, and we
+    // mirror the FIRST item back into those columns so existing views keep working.
+    const cleanItems = (Array.isArray(req.body.items) ? req.body.items : [])
+      .map((it) => ({
+        category: (it.category || '').toString().trim() || null,
+        subcategory: (it.subcategory || '').toString().trim() || null,
+        quantity: (it.quantity || '').toString().trim() || null,
+        unit: (it.unit || '').toString().trim() || null,
+      }))
+      .filter((it) => it.category || it.quantity || it.unit);
+    if (cleanItems.length === 0 && (req.body.category || req.body.quantity)) {
+      cleanItems.push({
+        category: req.body.category || null,
+        subcategory: req.body.subcategory || null,
+        quantity: req.body.quantity || null,
+        unit: req.body.unit || null,
+      });
+    }
+    const first = cleanItems[0] || {};
+    const category = first.category || null;
+    const subcategory = first.subcategory || null;
+    const quantity = first.quantity || null;
+    const unit = first.unit || null;
 
     // If an existing project is chosen, it must belong to this customer.
     if (project_id) {
@@ -41,12 +67,12 @@ router.post(
       const { rows } = await client.query(
         `INSERT INTO enquiries
            (enquiry_id, customer_id, category, subcategory, subject, message, quantity, unit, target_price,
-            location, pincode, contact_phone, project_id, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+            location, pincode, contact_phone, project_id, items, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
          RETURNING *`,
-        [enquiryId, customer_id, category || null, subcategory || null, subject || null, message,
-         quantity || null, unit || null, target_price || null, location || null, pincode || null,
-         contact_phone || null, project_id || null,
+        [enquiryId, customer_id, category, subcategory, subject || null, message,
+         quantity, unit, target_price || null, location || null, pincode || null,
+         contact_phone || null, project_id || null, JSON.stringify(cleanItems),
          project_id ? 'in_discussion' : 'new']
       );
       // Notify internal team (broadcast row keyed to internal users at read time).
