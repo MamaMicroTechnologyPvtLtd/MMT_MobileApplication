@@ -15,10 +15,11 @@ async function main() {
     await client.query('BEGIN');
 
     // Fully-test child tables (legacy import never created these) — these
-    // reference orders/deliveries, so clear them first.
+    // reference orders/deliveries/users, so clear them first. listings &
+    // day_reports reference the listing-engineer users we remove below.
     for (const table of [
       'notifications', 'payments', 'deliveries', 'customer_quotations',
-      'supplier_quotations', 'order_suppliers',
+      'supplier_quotations', 'order_suppliers', 'day_reports', 'listings',
     ]) {
       const r = await client.query(`DELETE FROM ${table}`);
       // eslint-disable-next-line no-console
@@ -27,13 +28,13 @@ async function main() {
 
     // Orders & projects: keep the legacy-imported ones (created_by IS NULL),
     // delete only those created during testing (created_by = an employee).
-    // Test orders reference enquiries, so delete them before enquiries; test
-    // projects are referenced by enquiries, so delete them after.
+    // Both test orders AND test projects can reference an enquiry, so delete
+    // them BEFORE the enquiries (orders first, since they reference projects).
     const dor = await client.query('DELETE FROM orders WHERE created_by IS NOT NULL');
-    const den = await client.query('DELETE FROM enquiries');
     const dpr = await client.query('DELETE FROM projects WHERE created_by IS NOT NULL');
+    const den = await client.query('DELETE FROM enquiries');
     // eslint-disable-next-line no-console
-    console.log(`  removed test orders: ${dor.rowCount}, enquiries: ${den.rowCount}, test projects: ${dpr.rowCount}`);
+    console.log(`  removed test orders: ${dor.rowCount}, test projects: ${dpr.rowCount}, enquiries: ${den.rowCount}`);
 
     // Logins for test customers/suppliers (keep employee logins).
     await client.query(
@@ -50,6 +51,17 @@ async function main() {
     const ds = await client.query('DELETE FROM suppliers WHERE legacy_id IS NULL');
     // eslint-disable-next-line no-console
     console.log(`  removed test customers: ${dc.rowCount}, test suppliers: ${ds.rowCount}`);
+
+    // Test employee logins: remove Listing Engineers (all are test during this
+    // phase, e.g. TEST_LE1/TEST_LE2) but KEEP admin/manager. Set
+    // KEEP_LISTING_ENGINEERS=1 to preserve them.
+    if (process.env.KEEP_LISTING_ENGINEERS !== '1') {
+      const dle = await client.query(
+        `DELETE FROM users WHERE role = 'internal' AND staff_role = 'listing_engineer'`
+      );
+      // eslint-disable-next-line no-console
+      console.log(`  removed listing-engineer test logins: ${dle.rowCount}`);
+    }
 
     // Recompute counters from the remaining (legacy) data so new ids continue
     // correctly; reset the purely-test counters to 0.

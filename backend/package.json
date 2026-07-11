@@ -12,6 +12,7 @@
     "db:refresh-legacy-details": "node scripts/refreshLegacyDetails.js",
     "db:seed-employees": "node scripts/seedEmployees.js",
     "db:reset-test": "node scripts/resetTestData.js",
+    "db:set-counters": "node scripts/setCounters.js",
     "test": "node --test"
   },
   "dependencies": {
